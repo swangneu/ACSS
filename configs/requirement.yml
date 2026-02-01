@@ -1,7 +1,6 @@
-# Seed
-default_seed: 25
-
 # Basic
 rated_input_voltage: 100
-rated_output_voltage: 400
+rated_output_voltage: 60
 rated_power: 1000
+
+
