@@ -5,9 +5,9 @@ function out = run_model(model_slx, varargin)
 % example_1/
 %   src/control_1.c
 %   src/control_sfunc_1_bridge.c
+%   src/parameter_1.m
 %   model/control_sfunc_1.c
 %   model/topology_1.slx
-%   parameter_1.m
 %   run_model.m
 %
 % Example call (MATLAB):
@@ -56,7 +56,7 @@ function out = run_model(model_slx, varargin)
     addpath(model_dir);
 
     % -------------------- Load parameters into BASE workspace (critical!) --------------------
-    param_file = fullfile(here, "parameter_1.m");
+    param_file = fullfile(src_dir, "parameter_1.m");
     assert(isfile(param_file), "Missing parameter file: %s", param_file);
 
     % Run parameter script in BASE workspace so Simulink can resolve par.xxx

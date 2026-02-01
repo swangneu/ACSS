@@ -9,10 +9,10 @@
 
 /* Externs_BEGIN */
 /* ====== User parameters (edit these first) ====== */
-static double Kp   = 0.001;       /* PI gains (start small) */
-static double Ki   = 20.0;
-static double Ts   = 1e-6;       /* controller/PWM update step (s) */
-static double fsw  = 100e3;      /* PWM switching frequency (Hz) */
+static double Kp   = 0.0001;       /* PI gains (start small) */
+static double Ki   = 1.0;
+static double Ts   = 1e-5;       /* controller/PWM update step (s) */
+static double fsw  = 10e3;      /* PWM switching frequency (Hz) */
 static double Vref = 50.0;       /* voltage reference */
 
 /* deadtime in seconds (set 0.0 to disable) */

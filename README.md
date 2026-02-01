@@ -10,15 +10,16 @@ driven from Python via the MATLAB Engine.
 ```
 example_1/
 ├─ src/
-│  ├─ control_1.c                  # User control logic (S-Function wrapper style)
+│  ├─ parameter_1.m                # Defines parameter (TO BE AI-GENERATED)
+│  ├─ control_1.c                  # S-Function wrapper style control code (TO BE AI-GENERATED)
 │  └─ control_sfunc_1_bridge.c     # Wrapper name-alias bridge
 │
 ├─ model/
-│  ├─ control_sfunc_1.c            # Auto-generated S-Function shell (do not edit)
+│  ├─ ...                          # Other unnecessary files
+│  ├─ control_sfunc_1.c            # Auto-generated from Simulink model
 │  └─ topology_1.slx               # Simulink model
 │
-├─ parameter_1.m                   # Defines parameter struct `par`
-├─ run_model.m                     # Builds MEX and runs the model
+├─ run_model.m                     # Matlab interface to be called by Python
 └─ run.ipynb                       # Python entry point
 ```
 
@@ -48,7 +49,9 @@ eng.cd("example_1", nargout=0)
 out = eng.run_model(
     "model/topology_1.slx",
     "BuildDir", "build",
+    "CleanAfterRun", True,
     "StopTime", "0.5",
+    "Debug", True,
     nargout=1
 )
 
