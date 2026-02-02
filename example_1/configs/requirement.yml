@@ -1,0 +1,92 @@
+converter:
+  name: "DCDC Inverter"
+  version: "1.0"
+  application:
+    type: "DC-DC"
+    use_case: "Buck converter for DC microgrid"
+    rated_power: 5e3        # W
+    topology: "Synchronous buck"
+    switching_frequency: 100e3  # Hz
+
+electrical_requirements:
+  input:
+    voltage:
+      nominal: 800           # V
+      min: 650
+      max: 900
+    ripple_limit: 2.0        # %
+  output:
+    voltage:
+      nominal: 400           # V
+      tolerance: ±5%
+    current:
+      max_rms: 125           # A
+      overload_duration: 2.0 # s
+    power_quality:
+      thd_max: 3.0           # %
+
+control_requirements:
+  mode:
+    - grid_forming
+    - grid_following
+  dynamics:
+    bandwidth: 500           # Hz
+    settling_time: 50e-3     # s
+    overshoot_max: 10        # %
+  stability:
+    phase_margin_min: 45     # deg
+    gain_margin_min: 6       # dB
+  large_signal:
+    black_start_supported: true
+    max_phase_jump: 180      # deg
+
+efficiency_requirements:
+  peak_efficiency: 98.5      # %
+  european_efficiency: 97.8  # %
+  standby_power_max: 50      # W
+
+thermal_requirements:
+  ambient_temperature:
+    min: -20                 # °C
+    max: 50
+  junction_temperature_max: 150 # °C
+  cooling: "Forced air"
+
+protection_requirements:
+  over_current:
+    trip_level: 1.5          # pu
+    response_time: 5e-6      # s
+  over_voltage:
+    trip_level: 1.2          # pu
+  under_voltage:
+    ride_through: true
+  ground_fault:
+    detection: true
+    trip_time: 100e-3        # s
+
+interfaces:
+  communication:
+    - CAN
+    - Ethernet
+  sensors:
+    voltage: true
+    current: true
+    temperature: true
+
+standards_compliance:
+  - "IEEE 1547"
+  - "UL 1741"
+  - "IEC 61800"
+
+verification:
+  simulation:
+    required: true
+    platforms:
+      - Simulink
+      - PSIM
+  hil:
+    required: true
+    platform: "Typhoon HIL"
+  hardware_test:
+    required: true
+    power_level: 10e3        # W

@@ -1,14 +1,24 @@
-# example_1 – Simulink S-Function + Python Workflow
+# ACSS: Autonomous Control Synthesis System
 
-This project runs a Simulink model with a custom C-based S-Function controller,
-driven from Python via the MATLAB Engine.
+This project runs a Simulink model with a custom C-based S-Function controller for power converters, driven from Python via the MATLAB Engine.
+
+---
+
+## Requirements
+
+- MATLAB 2024b or later
+- Simulink
+- Simscape
+- Control systems toolbox
 
 ---
 
 ## Folder Structure
 
 ```
-example_1/
+example_i/
+├─ configs/
+│  └─ requirement.yml              # Structured requirements for converter
 ├─ src/
 │  ├─ parameter_1.m                # Defines parameter (TO BE AI-GENERATED)
 │  ├─ control_1.c                  # S-Function wrapper style control code (TO BE AI-GENERATED)
