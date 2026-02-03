@@ -1,9 +1,36 @@
 <mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.3.6 Chrome/140.0.7339.249 Electron/38.8.0 Safari/537.36" version="29.3.6">
   <diagram name="Page-1" id="-Wa0JnVC04ABVDIb3yJZ">
-    <mxGraphModel dx="690" dy="593" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1188" dy="701" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
+        <mxCell id="n49MUhsA0pi5_1w65G9q-23" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Python Environment (.py)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="600" width="720" x="50" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="n49MUhsA0pi5_1w65G9q-14" parent="1" style="html=1;shadow=0;dashed=0;align=center;verticalAlign=middle;shape=mxgraph.arrows2.arrow;dy=0.62;dx=18.33;notch=0;" value="" vertex="1">
+          <mxGeometry height="15" width="60" x="180" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="n49MUhsA0pi5_1w65G9q-15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Structured Requirements&lt;div&gt;(.yml)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="100" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="n49MUhsA0pi5_1w65G9q-16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Unstrutured Requirements&lt;div&gt;(.txt)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="100" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="n49MUhsA0pi5_1w65G9q-17" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="C Code&lt;div&gt;(.C)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="290" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="n49MUhsA0pi5_1w65G9q-18" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Circuit Parameter&lt;div&gt;(.m)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="290" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="n49MUhsA0pi5_1w65G9q-19" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Simulink Main&lt;br&gt;&lt;div&gt;(.slx)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="460" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="n49MUhsA0pi5_1w65G9q-21" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Simulink S-Function&lt;div&gt;(.C)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="290" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="n49MUhsA0pi5_1w65G9q-22" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Simulink C Code Executable&lt;div&gt;(.mexw64)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="460" y="310" as="geometry" />
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
