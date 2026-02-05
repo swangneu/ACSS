@@ -1,92 +1,87 @@
-converter:
-  name: "DCDC Inverter"
-  version: "1.0"
-  application:
-    type: "DC-DC"
-    use_case: "Buck converter for DC microgrid"
-    rated_power: 5e3        # W
-    topology: "Synchronous buck"
-    switching_frequency: 100e3  # Hz
+meta:
+  project: "converter_req"
+  converter_type: "dc-dc"   # or "dc-ac", "inverter", "grid-tie"
+  fsw_hz: 100000
+  Ts_ctrl_s: 1e-5
 
-electrical_requirements:
-  input:
-    voltage:
-      nominal: 800           # V
-      min: 650
-      max: 900
-    ripple_limit: 2.0        # %
-  output:
-    voltage:
-      nominal: 400           # V
-      tolerance: ±5%
-    current:
-      max_rms: 125           # A
-      overload_duration: 2.0 # s
-    power_quality:
-      thd_max: 3.0           # %
+operating_envelope:
+  vin_V:
+    min: 80
+    nominal: 100
+    max: 120
+  vout_V:
+    nominal: 50
+    tolerance_pct: 1.0
+  load:
+    mode: "resistive"     # "constant_power" or "resistive"
+    iout_A:
+      min: 0.5
+      max: 50
+  tests:
+    load_step:
+      - { from_pct: 10, to_pct: 90, edge_s: 0 }   # ideal step
+      - { from_pct: 50, to_pct: 100, edge_s: 1e-3 }
+
+ripple_requirements:
+  vout_ripple:
+    metric: "peak_to_peak"
+    max_mV: 200                  # or max_pct
+    measurement_bw_Hz: 200000
+  inductor_current_ripple:
+    metric: "peak_to_peak"
+    max_pct_of_iout: 30          # common: 20–40% for CCM designs
+  dc_link_ripple:
+    enabled: false
+    max_mV: 0
+
+transient_requirements:
+  voltage_deviation:
+    max_dip_pct: 5               # undershoot during load step
+    max_overshoot_pct: 5
+  timing:
+    settling_time_ms: 5          # to within tolerance band
+    recovery_time_ms: 2
+  current_limit:
+    i_peak_A: 80
+    limit_mode: "cycle_by_cycle" # or "foldback", "hiccup"
+
+passive_design:
+  inductor:
+    design_variable: true
+    L_uH:
+      min: 30
+      max: 1500
+    constraints:
+      I_rms_A_max: 60
+      I_peak_A_max: 80
+      I_sat_A_min: 100           # sat margin requirement
+      DCR_mOhm_max: 10
+  capacitor:
+    design_variable: true
+    Cout_uF:
+      min: 100
+      max: 3000
+    constraints:
+      ESR_mOhm_max: 200
+      ripple_current_A_rms_max: 8
+      voltage_rating_V_min: 63
 
 control_requirements:
-  mode:
-    - grid_forming
-    - grid_following
-  dynamics:
-    bandwidth: 500           # Hz
-    settling_time: 50e-3     # s
-    overshoot_max: 10        # %
-  stability:
-    phase_margin_min: 45     # deg
-    gain_margin_min: 6       # dB
-  large_signal:
-    black_start_supported: true
-    max_phase_jump: 180      # deg
-
-efficiency_requirements:
-  peak_efficiency: 98.5      # %
-  european_efficiency: 97.8  # %
-  standby_power_max: 50      # W
-
-thermal_requirements:
-  ambient_temperature:
-    min: -20                 # °C
-    max: 50
-  junction_temperature_max: 150 # °C
-  cooling: "Forced air"
-
-protection_requirements:
-  over_current:
-    trip_level: 1.5          # pu
-    response_time: 5e-6      # s
-  over_voltage:
-    trip_level: 1.2          # pu
-  under_voltage:
-    ride_through: true
-  ground_fault:
-    detection: true
-    trip_time: 100e-3        # s
-
-interfaces:
-  communication:
-    - CAN
-    - Ethernet
-  sensors:
-    voltage: true
-    current: true
-    temperature: true
-
-standards_compliance:
-  - "IEEE 1547"
-  - "UL 1741"
-  - "IEC 61800"
-
-verification:
-  simulation:
-    required: true
-    platforms:
-      - Simulink
-      - PSIM
-  hil:
-    required: true
-    platform: "Typhoon HIL"
-  hardware_test:
-    required: true
-    power_level: 10e3        # W
+  objectives:
+    - "tight_voltage_regulation"
+    - "fast_load_transient"
+    - "bounded_current"
+  loop_specs:
+    bandwidth_Hz:
+      target: 1000
+      min: 500
+      max: 2000
+    stability_margins:
+      phase_margin_deg_min: 45
+      gain_margin_dB_min: 6
+  implementation_limits:
+    duty_slew_max_per_sample: 0.05
+    anti_windup: true
+    sensor_noise_rms:
+      vout_mV: 5
+      iL_mA: 50

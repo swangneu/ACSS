@@ -1,0 +1,17 @@
+{
+  "model": "topology_1",
+  "slx_path": "D:\\AAI\\ACSS\\example_1\\model\\topology_1.slx",
+  "solver": {},
+  "inports": [],
+  "outports": [],
+  "sfunctions": [
+    {
+      "path": "topology_1/control_sfunc_1",
+      "FunctionName": "control_sfunc_1",
+      "Parameters": ""
+    }
+  ],
+  "notes": [
+    "model update/compile failed: Error due to multiple causes.\n"
+  ]
+}
