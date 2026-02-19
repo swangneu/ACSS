@@ -10,6 +10,8 @@ This project runs a Simulink model with a custom C-based S-Function controller f
 - Simulink
 - Simscape
 - Control systems toolbox
+- OpenAI
+- Deepseek API (or other LLM)
 
 ---
 
