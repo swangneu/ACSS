@@ -64,6 +64,7 @@ class TopologyAgent:
         user_prompt = (
             "Given this requirement object, propose a practical initial topology and passive sizing "
             "for a first simulation iteration.\n"
+            f"Design intent prompt: {req.design_prompt}\n"
             f"{asdict(req)}"
         )
         data = self.client.complete_json(system_prompt, user_prompt, temperature=0.1)

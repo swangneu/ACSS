@@ -1,5 +1,6 @@
 {
   "name": "buck_48_to_12_500w",
+  "design_prompt": "Design a robust 48V-to-12V buck converter control that prioritizes low overshoot, fast settling, and practical implementation in Simulink S-Function workflow.",
   "vin_nominal_v": 48.0,
   "vout_target_v": 12.0,
   "pout_w": 500.0,

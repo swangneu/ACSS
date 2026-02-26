@@ -9,6 +9,7 @@ from typing import Any
 @dataclass
 class RequirementSpec:
     name: str
+    design_prompt: str
     vin_nominal_v: float
     vout_target_v: float
     pout_w: float
@@ -82,6 +83,9 @@ class IterationRecord:
 def load_requirements(path: Path) -> RequirementSpec:
     # Use utf-8-sig to tolerate files saved with BOM by Windows editors.
     data = json.loads(path.read_text(encoding='utf-8-sig'))
+    prompt = str(data.get('design_prompt', '')).strip()
+    if not prompt:
+        raise ValueError("requirements JSON must include non-empty 'design_prompt' field")
     return RequirementSpec(**data)
 
 

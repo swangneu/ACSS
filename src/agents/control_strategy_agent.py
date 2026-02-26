@@ -31,7 +31,7 @@ class ControlStrategyAgent:
         iteration: int,
         previous_evaluation: EvaluationResult | None = None,
     ) -> dict[str, object]:
-        notes = (req.control_design_notes or '').lower()
+        notes = f"{req.design_prompt} {req.control_design_notes or ''}".lower()
         name = req.name.lower()
 
         if 'pfc' in name or 'rectifier' in name or 'pfc' in notes:
@@ -81,6 +81,16 @@ class ControlStrategyAgent:
                 'rationale': ['Default inverter dq strategy'],
             }
 
+        if 'current mode' in notes or 'current-mode' in notes or 'cascaded' in notes:
+            return {
+                'controller': 'pi_current_mode',
+                'architecture': 'cascaded',
+                'current_loop_enabled': True,
+                'inrush_control': 'active_current_limit',
+                'secondary_controller': 'voltage_outer_loop',
+                'rationale': ['Requested by design/revision notes'],
+            }
+
         # Escalate for repeated non-passing iterations.
         if previous_evaluation is not None and not previous_evaluation.passed and iteration >= 2:
             return {
@@ -119,6 +129,7 @@ class ControlStrategyAgent:
             f"topology={asdict(topology)}\n"
             f"iteration={iteration}\n"
             f"previous_evaluation={asdict(previous_evaluation) if previous_evaluation else None}\n"
+            f"design_prompt={req.design_prompt}\n"
             "Choose robust strategy for converter barriers, load step, grid connection, and inrush."
         )
         data = self.client.complete_json(system_prompt, user_prompt, temperature=0.1)

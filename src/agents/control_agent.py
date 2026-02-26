@@ -98,6 +98,7 @@ class ControlAgent:
             f"topology={asdict(topology)}\n"
             f"selected_strategy={strategy}\n"
             f"iteration={iteration}\n"
+            f"design_prompt={req.design_prompt}\n"
             "Keep controller type aligned with selected_strategy."
         )
         data = self.client.complete_json(system_prompt, user_prompt, temperature=0.1)

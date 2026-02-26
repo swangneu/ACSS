@@ -1,5 +1,6 @@
 {
   "name": "inverter_3ph_grid_loadstep_template",
+  "design_prompt": "Design a grid-forming 3-phase inverter controller for weak-grid operation with load-step robustness, inrush limiting, and safe transient behavior.",
   "vin_nominal_v": 400.0,
   "vout_target_v": 100.0,
   "pout_w": 10000.0,

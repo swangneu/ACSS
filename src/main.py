@@ -13,8 +13,8 @@ def main() -> None:
     parser.add_argument(
         '--template-slx',
         type=Path,
-        default=None,
-        help='Optional explicit path to Simulink template (.slx)',
+        required=True,
+        help='Path to Simulink template (.slx)',
     )
     parser.add_argument('--no-matlab', action='store_true', help='Disable MATLAB invocation and use synthetic simulator')
     args = parser.parse_args()

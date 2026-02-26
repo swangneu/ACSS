@@ -13,7 +13,7 @@ from src.agents.model_builder_agent import ModelBuilderAgent
 from src.agents.sensor_agent import SensorAgent
 from src.agents.simulation_agent import SimulationAgent
 from src.agents.topology_agent import TopologyAgent
-from src.agents.tuning_agent import TuningAgent
+from src.agents.revising_agent import RevisingAgent
 from src.contracts import IterationRecord, dump_json, load_requirements
 
 
@@ -37,9 +37,14 @@ class ACSSOrchestrator:
         self.model_builder = ModelBuilderAgent()
         self.simulation_agent = SimulationAgent()
         self.evaluation_agent = EvaluationAgent()
-        self.tuning_agent = TuningAgent()
+        self.revising_agent = RevisingAgent()
 
     def run(self) -> Path:
+        if self.template_slx is None:
+            raise ValueError('template_slx is required')
+        if not self.template_slx.exists():
+            raise FileNotFoundError(f'Template .slx not found: {self.template_slx}')
+
         req = load_requirements(self.requirements_path)
         stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         run_dir = self.out_root / f'{stamp}_{req.name}'
@@ -92,7 +97,7 @@ class ACSSOrchestrator:
 
             if eval_result.passed:
                 break
-            topology, control = self.tuning_agent.tune(req, topology, control)
+            topology, control = self.revising_agent.revise(req, topology, control, eval_result, i)
 
         final_artifact_files: list[str] = []
         final_validation_mode = 'none'
