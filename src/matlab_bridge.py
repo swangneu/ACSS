@@ -28,4 +28,5 @@ def run_matlab_stub(payload_path: Path, out_dir: Path) -> SimulationResult | Non
         return None
 
     data = json.loads(out_json.read_text(encoding='utf-8'))
-    return SimulationResult(metrics=data['metrics'], waveform_files=data['waveform_files'], raw=data)
+    code_files = data.get('code_files', [])
+    return SimulationResult(metrics=data['metrics'], waveform_files=data['waveform_files'], code_files=code_files, raw=data)

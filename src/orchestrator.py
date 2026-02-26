@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 from dataclasses import asdict
+from copy import deepcopy
+import shutil
 
 from src.agents.control_agent import ControlAgent
 from src.agents.evaluation_agent import EvaluationAgent
@@ -51,11 +53,11 @@ class ACSSOrchestrator:
             records.append(
                 IterationRecord(
                     iteration=i,
-                    topology=topology,
-                    sensors=sensors,
-                    control=control,
-                    simulation=sim,
-                    evaluation=eval_result,
+                    topology=deepcopy(topology),
+                    sensors=deepcopy(sensors),
+                    control=deepcopy(control),
+                    simulation=deepcopy(sim),
+                    evaluation=deepcopy(eval_result),
                 )
             )
 
@@ -71,6 +73,14 @@ class ACSSOrchestrator:
             if eval_result.passed:
                 break
             topology, control = self.tuning_agent.tune(req, topology, control)
+
+        final_artifact_files: list[str] = []
+        final_validation_mode = 'none'
+        for r in records:
+            if r.evaluation.passed:
+                final_artifact_files = self._publish_final_control_code(run_dir, r)
+                final_validation_mode = str(r.simulation.raw.get('mode', 'unknown'))
+                break
 
         dump_json(
             run_dir / 'run_summary.json',
@@ -89,7 +99,35 @@ class ACSSOrchestrator:
                 ],
                 'final_passed': records[-1].evaluation.passed if records else False,
                 'final_score': records[-1].evaluation.score if records else 0.0,
+                'final_validation_mode': final_validation_mode,
+                'final_control_code_files': final_artifact_files,
             },
         )
 
         return run_dir
+
+    def _publish_final_control_code(self, run_dir: Path, record: IterationRecord) -> list[str]:
+        if not record.simulation.code_files:
+            return []
+
+        target_dir = run_dir / 'final_artifacts'
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        published: list[str] = []
+        for src in record.simulation.code_files:
+            src_path = Path(src)
+            if not src_path.exists():
+                continue
+            dst = target_dir / src_path.name
+            shutil.copy2(src_path, dst)
+            published.append(str(dst))
+
+        dump_json(
+            target_dir / 'manifest.json',
+            {
+                'source_iteration': record.iteration,
+                'controller': asdict(record.control),
+                'files': published,
+            },
+        )
+        return published

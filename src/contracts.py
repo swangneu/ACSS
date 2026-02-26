@@ -45,6 +45,7 @@ class ControlDesign:
 class SimulationResult:
     metrics: dict[str, float]
     waveform_files: list[str]
+    code_files: list[str]
     raw: dict[str, Any]
 
 
