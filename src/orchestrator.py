@@ -7,6 +7,7 @@ from copy import deepcopy
 import shutil
 
 from src.agents.control_agent import ControlAgent
+from src.agents.control_strategy_agent import ControlStrategyAgent
 from src.agents.evaluation_agent import EvaluationAgent
 from src.agents.model_builder_agent import ModelBuilderAgent
 from src.agents.sensor_agent import SensorAgent
@@ -17,13 +18,21 @@ from src.contracts import IterationRecord, dump_json, load_requirements
 
 
 class ACSSOrchestrator:
-    def __init__(self, requirements_path: Path, out_root: Path, use_matlab: bool = True):
+    def __init__(
+        self,
+        requirements_path: Path,
+        out_root: Path,
+        use_matlab: bool = True,
+        template_slx: Path | None = None,
+    ):
         self.requirements_path = requirements_path
         self.out_root = out_root
         self.use_matlab = use_matlab
+        self.template_slx = template_slx
 
         self.topology_agent = TopologyAgent()
         self.sensor_agent = SensorAgent()
+        self.control_strategy_agent = ControlStrategyAgent()
         self.control_agent = ControlAgent()
         self.model_builder = ModelBuilderAgent()
         self.simulation_agent = SimulationAgent()
@@ -46,8 +55,19 @@ class ACSSOrchestrator:
             iter_dir.mkdir(parents=True, exist_ok=True)
 
             sensors = self.sensor_agent.design(req, topology)
+            previous_eval = records[-1].evaluation if records else None
+            strategy = self.control_strategy_agent.choose(req, topology, i, previous_eval)
+            control = self.control_agent.design(req, topology, iteration=i, strategy=strategy)
             payload_path = self.model_builder.build_payload(req, topology, sensors, control, iter_dir)
-            sim = self.simulation_agent.run(req, topology, control, payload_path, iter_dir, self.use_matlab)
+            sim = self.simulation_agent.run(
+                req,
+                topology,
+                control,
+                payload_path,
+                iter_dir,
+                self.use_matlab,
+                template_override=self.template_slx,
+            )
             eval_result = self.evaluation_agent.evaluate(req, sim)
 
             records.append(

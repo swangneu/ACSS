@@ -1,0 +1,18 @@
+{
+  "name": "inverter_3ph_grid_loadstep_template",
+  "vin_nominal_v": 400.0,
+  "vout_target_v": 100.0,
+  "pout_w": 10000.0,
+  "fsw_hz": 20000.0,
+  "ripple_v_pp_max": 8.0,
+  "settling_time_ms_max": 150.0,
+  "overshoot_pct_max": 8.0,
+  "efficiency_min_pct": 90.0,
+  "grid_connected": true,
+  "weak_grid_mode": true,
+  "load_step_pct": 0.5,
+  "inrush_limit_a": 35.0,
+  "control_design_notes": "Prioritize grid-forming stability. If simple PI fails, use VSG or VOC. Add active inrush limiting and inner current-loop protection during load steps and grid connection.",
+  "preferred_topology": "inverter_3ph",
+  "max_iterations": 10
+}
