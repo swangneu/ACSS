@@ -1,0 +1,6 @@
+{
+  "name": "acss-agentic-ai-starter",
+  "version": "0.1.0",
+  "description": "Agentic ACSS scaffold for MATLAB/Simulink power converter control",
+  "python": ">=3.10"
+}

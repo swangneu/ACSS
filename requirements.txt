@@ -1,0 +1,1 @@
+# Kept minimal on purpose; scaffold uses stdlib only.
