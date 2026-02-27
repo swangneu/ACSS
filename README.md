@@ -2,6 +2,8 @@
 
 Agentic workflow for Autonomous Control Synthesis System (ACSS), targeting MATLAB/Simulink power converter validation and controller artifact generation.
 
+<img src="images/acss_workflow.png" width="60%">
+
 ## Current workflow
 Run input each time:
 1. Requirements JSON (must include `design_prompt`)
