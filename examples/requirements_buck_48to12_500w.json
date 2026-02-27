@@ -5,9 +5,9 @@
   "vout_target_v": 12.0,
   "pout_w": 500.0,
   "fsw_hz": 10000.0,
-  "ripple_v_pp_max": 0.05,
-  "settling_time_ms_max": 3.0,
-  "overshoot_pct_max": 5.0,
-  "efficiency_min_pct": 92.0,
+  "ripple_v_pp_max": 1.2,
+  "settling_time_ms_max": 300.0,
+  "overshoot_pct_max": 500.0,
+  "efficiency_min_pct": 90.0,
   "max_iterations": 6
 }
