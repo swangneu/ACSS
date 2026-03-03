@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from dataclasses import asdict
 from copy import deepcopy
+import json
 import shutil
 
 from src.agents.control_agent import ControlAgent
@@ -14,7 +15,7 @@ from src.agents.sensor_agent import SensorAgent
 from src.agents.simulation_agent import SimulationAgent
 from src.agents.topology_agent import TopologyAgent
 from src.agents.revising_agent import RevisingAgent
-from src.contracts import IterationRecord, dump_json, load_requirements
+from src.contracts import IterationRecord, dump_json, load_requirements, to_dict
 
 
 class ACSSOrchestrator:
@@ -24,11 +25,13 @@ class ACSSOrchestrator:
         out_root: Path,
         use_matlab: bool = True,
         template_slx: Path | None = None,
+        human_review: bool = False,
     ):
         self.requirements_path = requirements_path
         self.out_root = out_root
         self.use_matlab = use_matlab
         self.template_slx = template_slx
+        self.human_review = human_review
 
         self.topology_agent = TopologyAgent()
         self.sensor_agent = SensorAgent()
@@ -53,16 +56,19 @@ class ACSSOrchestrator:
         records: list[IterationRecord] = []
 
         topology = self.topology_agent.design(req)
-        control = self.control_agent.design(req, topology, iteration=0)
+        topology = self._review_step(run_dir, 'topology', topology)
 
         for i in range(req.max_iterations):
             iter_dir = run_dir / f'iter_{i:02d}'
             iter_dir.mkdir(parents=True, exist_ok=True)
 
             sensors = self.sensor_agent.design(req, topology)
+            sensors = self._review_step(iter_dir, 'sensors', sensors)
             previous_eval = records[-1].evaluation if records else None
             strategy = self.control_strategy_agent.choose(req, topology, i, previous_eval)
+            strategy = self._review_step(iter_dir, 'control_strategy', strategy)
             control = self.control_agent.design(req, topology, iteration=i, strategy=strategy)
+            control = self._review_step(iter_dir, 'control', control)
             payload_path = self.model_builder.build_payload(req, topology, sensors, control, iter_dir)
             sim = self.simulation_agent.run(
                 req,
@@ -73,7 +79,9 @@ class ACSSOrchestrator:
                 self.use_matlab,
                 template_override=self.template_slx,
             )
+            sim = self._review_step(iter_dir, 'simulation', sim)
             eval_result = self.evaluation_agent.evaluate(req, sim)
+            eval_result = self._review_step(iter_dir, 'evaluation', eval_result)
 
             records.append(
                 IterationRecord(
@@ -98,6 +106,8 @@ class ACSSOrchestrator:
             if eval_result.passed:
                 break
             topology, control = self.revising_agent.revise(req, topology, control, eval_result, i)
+            topology = self._review_step(iter_dir, 'revised_topology', topology)
+            control = self._review_step(iter_dir, 'revised_control', control)
 
         final_artifact_files: list[str] = []
         final_validation_mode = 'none'
@@ -156,3 +166,31 @@ class ACSSOrchestrator:
             },
         )
         return published
+
+    def _review_step(self, base_dir: Path, step_name: str, data: object) -> object:
+        if not self.human_review:
+            return data
+
+        review_path = base_dir / f'{step_name}.review.json'
+        dump_json(review_path, to_dict(data))
+
+        print(f'[{step_name}] Review proposal at: {review_path}')
+        print("Press Enter to accept, type 'e' to reload edited JSON, or 'q' to abort.")
+
+        while True:
+            choice = input('> ').strip().lower()
+            if choice == '':
+                return data
+            if choice == 'q':
+                raise RuntimeError(f'Run aborted during {step_name} review')
+            if choice == 'e':
+                reloaded = self._load_review_data(review_path, data)
+                dump_json(review_path, to_dict(reloaded))
+                return reloaded
+            print("Invalid choice. Use Enter, 'e', or 'q'.")
+
+    def _load_review_data(self, review_path: Path, template: object) -> object:
+        payload = json.loads(review_path.read_text(encoding='utf-8'))
+        if isinstance(template, dict):
+            return payload
+        return type(template)(**payload)

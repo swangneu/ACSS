@@ -17,6 +17,11 @@ def main() -> None:
         help='Path to Simulink template (.slx)',
     )
     parser.add_argument('--no-matlab', action='store_true', help='Disable MATLAB invocation and use synthetic simulator')
+    parser.add_argument(
+        '--human-review',
+        action='store_true',
+        help='Pause after each workflow step and allow manual approval or JSON edits',
+    )
     args = parser.parse_args()
 
     orch = ACSSOrchestrator(
@@ -24,6 +29,7 @@ def main() -> None:
         args.out,
         use_matlab=not args.no_matlab,
         template_slx=args.template_slx,
+        human_review=args.human_review,
     )
     run_dir = orch.run()
     print(f'Run complete: {run_dir}')

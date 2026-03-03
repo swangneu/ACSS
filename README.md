@@ -23,6 +23,11 @@ Then ACSS does:
 7. Evaluation agent: checks limits and pass/fail.
 8. If not passed, revising can change control structure and plant/controller settings, then repeats until `max_iterations`.
 
+Optional human-in-the-loop mode:
+- Add `--human-review` to pause after topology, sensors, control strategy, control, simulation, evaluation, and post-revision outputs.
+- At each pause, ACSS writes a `*.review.json` file for that step.
+- Press `Enter` to accept the current result, type `e` after editing the JSON file to reload your changes, or type `q` to abort the run.
+
 What `model_payload.json` means (plain words):
 - It is the handoff package for that iteration.
 - It bundles requirements + topology + sensors + control decisions in one file.
@@ -56,10 +61,20 @@ Synthetic smoke run (no MATLAB invocation):
 python -m src.main --requirements examples/requirements_buck_48to12_500w.json --template-slx examples/topology.slx --out runs --no-matlab
 ```
 
+Human-reviewed run (pause after each major step):
+```powershell
+python -m src.main --requirements examples/requirements_buck_48to12_500w.json --template-slx examples/topology.slx --out runs --human-review
+```
+
 Explicit template override:
 ```powershell
 python -m src.main --requirements examples/requirements_inverter_3ph_grid_loadstep_template.json --template-slx examples/topology_inverter.slx --out runs
 ```
+
+Flag summary:
+- `--template-slx`: required on every run
+- `--no-matlab`: skip MATLAB and use the synthetic simulator path
+- `--human-review`: pause after each major workflow step and allow manual approval or JSON edits
 
 ## Requirements JSON
 `--requirements` must point to a JSON file that includes a non-empty `design_prompt`.
@@ -86,11 +101,13 @@ Each run creates `runs/<timestamp>_<requirements.name>/` with:
 - `iter_XX/`
   - `model_payload.json`
   - `summary.json`
+  - `*.review.json` files when `--human-review` is enabled
   - `acss_params.m`
   - `control_sfunc_wrapper.c` (or template module name)
   - `waveforms.json` (synthetic) or `*_waveform.json` via MATLAB result
   - `matlab_result.json`, `matlab_stdout.log`, `matlab_stderr.log` when MATLAB is invoked
 - `run_summary.json`
+- `topology.review.json` in the run root when `--human-review` is enabled
 - `final_artifacts/` only if an iteration passes evaluation
 
 ## Template behavior
