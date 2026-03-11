@@ -1,0 +1,14 @@
+{
+  "title": "Inverter dq Tuning Rules",
+  "topic": "tuning",
+  "topology": "inverter_3ph",
+  "architecture": "dq",
+  "tags": ["grid_connected", "current_loop", "sampling"],
+  "source_type": "tuning_rule",
+  "sections": [
+    {
+      "heading": "Loop ordering",
+      "text": "For dq control, tune the current loop before the outer voltage or power loop. The inner loop should dominate dynamic response and operate at the fastest practical sample time available in the switching workflow."
+    }
+  ]
+}

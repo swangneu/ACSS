@@ -1,0 +1,18 @@
+{
+  "title": "Buck PI Tuning Rules",
+  "topic": "tuning",
+  "topology": "buck",
+  "architecture": "pi",
+  "tags": ["buck", "sampling", "practical_implementation"],
+  "source_type": "tuning_rule",
+  "sections": [
+    {
+      "heading": "Sampling",
+      "text": "A practical digital voltage-loop PI implementation for a buck converter often uses a sample time faster than the switching period subdivision already exposed by the control pipeline. Avoid selecting a sample time slower than the dominant output dynamics."
+    },
+    {
+      "heading": "Gain direction",
+      "text": "If the response is too sluggish and stable, increase proportional gain first, then integral gain. If overshoot rises sharply, back off proportional gain or add current-loop structure instead of only raising integral gain."
+    }
+  ]
+}

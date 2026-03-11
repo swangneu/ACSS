@@ -53,6 +53,7 @@ class ControlDesign:
     inrush_limit_a: float = 0.0
     secondary_controller: str = 'none'
     rationale: list[str] = field(default_factory=list)
+    references: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -71,13 +72,29 @@ class EvaluationResult:
 
 
 @dataclass
+class EngineerReview:
+    approved: bool = False
+    overall: str = 'mixed'
+    good_points: list[str] = field(default_factory=list)
+    bad_points: list[str] = field(default_factory=list)
+    issue_locations: list[str] = field(default_factory=list)
+    revision_suggestions: list[str] = field(default_factory=list)
+    reviewer: str | None = None
+    notes: str | None = None
+    force_accept: bool = False
+    force_revise: bool = False
+
+
+@dataclass
 class IterationRecord:
     iteration: int
     topology: TopologyDesign
     sensors: SensorDesign
+    strategy: dict[str, Any]
     control: ControlDesign
     simulation: SimulationResult
     evaluation: EvaluationResult
+    engineer_review: EngineerReview | None = None
 
 
 def load_requirements(path: Path) -> RequirementSpec:

@@ -5,11 +5,13 @@ import os
 
 from src.contracts import ControlDesign, RequirementSpec, TopologyDesign
 from src.llm import DeepSeekClient
+from src.rag import LocalKnowledgeBase, extract_references, format_retrieved_context
 
 
 class ControlAgent:
     def __init__(self) -> None:
         self.client = DeepSeekClient()
+        self.knowledge = LocalKnowledgeBase()
 
     def design(
         self,
@@ -20,16 +22,17 @@ class ControlAgent:
     ) -> ControlDesign:
         if strategy is None:
             strategy = {}
+        context = self._retrieve_context(req, topology, strategy)
 
         if self.client.enabled:
             try:
-                llm_result = self._design_with_llm(req, topology, iteration, strategy)
-                return self._build_design(req, llm_result, iteration)
+                llm_result = self._design_with_llm(req, topology, iteration, strategy, context)
+                return self._build_design(req, llm_result, iteration, context)
             except Exception:
                 if os.getenv('DEEPSEEK_DEBUG', '').strip() == '1':
                     print('ControlAgent: DeepSeek call failed, using rule-based fallback')
 
-        return self._design_rule_based(req, topology, iteration, strategy)
+        return self._design_rule_based(req, topology, iteration, strategy, context)
 
     def _design_rule_based(
         self,
@@ -37,6 +40,7 @@ class ControlAgent:
         topology: TopologyDesign,
         iteration: int,
         strategy: dict[str, object],
+        retrieved_context: object,
     ) -> ControlDesign:
         architecture = str(strategy.get('architecture', 'pi')).strip().lower()
         controller = str(strategy.get('controller', 'pi_voltage_loop')).strip()
@@ -44,6 +48,7 @@ class ControlAgent:
         inrush_control = _normalize_inrush(str(strategy.get('inrush_control', 'none')))
         secondary = str(strategy.get('secondary_controller', 'none')).strip()
         rationale = [str(x) for x in strategy.get('rationale', [])] if isinstance(strategy.get('rationale'), list) else []
+        references = extract_references(retrieved_context)
 
         if topology.topology == 'inverter_3ph':
             base_kp = {'dq': 0.08, 'droop': 0.06, 'voc': 0.05, 'vsg': 0.04, 'cascaded': 0.05}.get(architecture, 0.08)
@@ -62,6 +67,7 @@ class ControlAgent:
                 inrush_limit_a=inrush_limit if inrush_control != 'none' else 0.0,
                 secondary_controller=secondary,
                 rationale=rationale,
+                references=references,
             )
 
         base = 0.03 if topology.topology == 'buck' else 0.02
@@ -79,6 +85,7 @@ class ControlAgent:
             inrush_limit_a=float(req.inrush_limit_a or 0.0) if inrush_control != 'none' else 0.0,
             secondary_controller=secondary,
             rationale=rationale,
+            references=references,
         )
 
     def _design_with_llm(
@@ -87,6 +94,7 @@ class ControlAgent:
         topology: TopologyDesign,
         iteration: int,
         strategy: dict[str, object],
+        retrieved_context: object,
     ) -> dict[str, object]:
         system_prompt = (
             "You are a control parameter synthesis assistant. "
@@ -99,6 +107,7 @@ class ControlAgent:
             f"selected_strategy={strategy}\n"
             f"iteration={iteration}\n"
             f"design_prompt={req.design_prompt}\n"
+            f"retrieved_knowledge=\n{format_retrieved_context(retrieved_context)}\n"
             "Keep controller type aligned with selected_strategy."
         )
         data = self.client.complete_json(system_prompt, user_prompt, temperature=0.1)
@@ -107,11 +116,12 @@ class ControlAgent:
             raise ValueError('LLM control response missing required fields')
         return data
 
-    def _build_design(self, req: RequirementSpec, llm_result: dict[str, object], iteration: int) -> ControlDesign:
+    def _build_design(self, req: RequirementSpec, llm_result: dict[str, object], iteration: int, retrieved_context: object) -> ControlDesign:
         inrush_raw = _normalize_inrush(str(llm_result.get('inrush_control', 'none')))
         arch = str(llm_result.get('architecture', 'pi')).strip().lower()
         if arch not in {'pi', 'dq', 'droop', 'voc', 'vsg', 'cascaded', 'pfc_current_mode'}:
             arch = 'pi'
+        references = extract_references(retrieved_context)
         return ControlDesign(
             controller=str(llm_result['controller']),
             kp=float(llm_result['kp']),
@@ -123,7 +133,41 @@ class ControlAgent:
             inrush_limit_a=float(llm_result.get('inrush_limit_a', req.inrush_limit_a or 0.0)) if inrush_raw != 'none' else 0.0,
             secondary_controller=str(llm_result.get('secondary_controller', 'none')),
             rationale=[str(x) for x in llm_result.get('rationale', [])] if isinstance(llm_result.get('rationale'), list) else [f'LLM synthesized iteration {iteration}'],
+            references=references,
         )
+
+    def _retrieve_context(
+        self,
+        req: RequirementSpec,
+        topology: TopologyDesign,
+        strategy: dict[str, object],
+    ):
+        architecture = str(strategy.get('architecture', '')).strip().lower()
+        query = (
+            f"{req.name} {req.design_prompt} {req.control_design_notes or ''} "
+            f"topology={topology.topology} architecture={architecture} controller={strategy.get('controller', '')}"
+        )
+        return self.knowledge.retrieve(
+            query,
+            topic='tuning',
+            topology=topology.topology,
+            architecture=architecture,
+            tags=_control_tags(req, strategy),
+            top_k=3,
+        )
+
+
+def _control_tags(req: RequirementSpec, strategy: dict[str, object]) -> list[str]:
+    tags: list[str] = []
+    if req.grid_connected:
+        tags.append('grid_connected')
+    if req.weak_grid_mode:
+        tags.append('weak_grid')
+    if req.load_step_pct is not None:
+        tags.append('load_step')
+    if req.inrush_limit_a is not None or str(strategy.get('inrush_control', 'none')).strip().lower() != 'none':
+        tags.append('inrush')
+    return tags
 
 
 def _normalize_inrush(value: str) -> str:

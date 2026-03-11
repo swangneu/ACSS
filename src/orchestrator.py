@@ -15,7 +15,7 @@ from src.agents.sensor_agent import SensorAgent
 from src.agents.simulation_agent import SimulationAgent
 from src.agents.topology_agent import TopologyAgent
 from src.agents.revising_agent import RevisingAgent
-from src.contracts import IterationRecord, dump_json, load_requirements, to_dict
+from src.contracts import EngineerReview, IterationRecord, dump_json, load_requirements, to_dict
 
 
 class ACSSOrchestrator:
@@ -82,15 +82,19 @@ class ACSSOrchestrator:
             sim = self._review_step(iter_dir, 'simulation', sim)
             eval_result = self.evaluation_agent.evaluate(req, sim)
             eval_result = self._review_step(iter_dir, 'evaluation', eval_result)
+            engineer_review = self._engineer_review_iteration(iter_dir, i, req, strategy, control, sim, eval_result)
+            final_pass = self._is_iteration_accepted(eval_result, engineer_review)
 
             records.append(
                 IterationRecord(
                     iteration=i,
                     topology=deepcopy(topology),
                     sensors=deepcopy(sensors),
+                    strategy=deepcopy(strategy),
                     control=deepcopy(control),
                     simulation=deepcopy(sim),
                     evaluation=deepcopy(eval_result),
+                    engineer_review=deepcopy(engineer_review),
                 )
             )
 
@@ -98,21 +102,24 @@ class ACSSOrchestrator:
                 'iteration': i,
                 'topology': asdict(topology),
                 'sensors': asdict(sensors),
+                'strategy': deepcopy(strategy),
                 'control': asdict(control),
                 'simulation': asdict(sim),
                 'evaluation': asdict(eval_result),
+                'engineer_review': asdict(engineer_review) if engineer_review else None,
+                'iteration_accepted': final_pass,
             })
 
-            if eval_result.passed:
+            if final_pass:
                 break
-            topology, control = self.revising_agent.revise(req, topology, control, eval_result, i)
+            topology, control = self.revising_agent.revise(req, topology, control, eval_result, engineer_review, i)
             topology = self._review_step(iter_dir, 'revised_topology', topology)
             control = self._review_step(iter_dir, 'revised_control', control)
 
         final_artifact_files: list[str] = []
         final_validation_mode = 'none'
         for r in records:
-            if r.evaluation.passed:
+            if self._is_iteration_accepted(r.evaluation, r.engineer_review):
                 final_artifact_files = self._publish_final_control_code(run_dir, r)
                 final_validation_mode = str(r.simulation.raw.get('mode', 'unknown'))
                 break
@@ -126,13 +133,16 @@ class ACSSOrchestrator:
                         'iteration': r.iteration,
                         'topology': asdict(r.topology),
                         'sensors': asdict(r.sensors),
+                        'strategy': deepcopy(r.strategy),
                         'control': asdict(r.control),
                         'simulation': asdict(r.simulation),
                         'evaluation': asdict(r.evaluation),
+                        'engineer_review': asdict(r.engineer_review) if r.engineer_review else None,
+                        'iteration_accepted': self._is_iteration_accepted(r.evaluation, r.engineer_review),
                     }
                     for r in records
                 ],
-                'final_passed': records[-1].evaluation.passed if records else False,
+                'final_passed': self._is_iteration_accepted(records[-1].evaluation, records[-1].engineer_review) if records else False,
                 'final_score': records[-1].evaluation.score if records else 0.0,
                 'final_validation_mode': final_validation_mode,
                 'final_control_code_files': final_artifact_files,
@@ -194,3 +204,90 @@ class ACSSOrchestrator:
         if isinstance(template, dict):
             return payload
         return type(template)(**payload)
+
+    def _engineer_review_iteration(
+        self,
+        iter_dir: Path,
+        iteration: int,
+        req: object,
+        strategy: dict[str, object],
+        control: object,
+        sim: object,
+        evaluation: object,
+    ) -> EngineerReview | None:
+        if not self.human_review:
+            return None
+
+        review_path = iter_dir / 'engineer_review.json'
+        existing_review = None
+        if review_path.exists():
+            try:
+                payload = json.loads(review_path.read_text(encoding='utf-8'))
+                existing = payload.get('engineer_review')
+                if isinstance(existing, dict):
+                    existing_review = EngineerReview(**existing)
+            except Exception:
+                existing_review = None
+
+        review = existing_review or EngineerReview()
+        packet = {
+            'iteration': iteration,
+            'requirements_name': getattr(req, 'name', ''),
+            'auto_assessment': to_dict(evaluation),
+            'strategy': to_dict(strategy),
+            'control': to_dict(control),
+            'simulation_metrics': getattr(sim, 'metrics', {}),
+            'knowledge_refs': _extract_knowledge_refs(strategy, control),
+            'engineer_review': asdict(review),
+        }
+        dump_json(review_path, packet)
+
+        print(f'[engineer_review] Review round at: {review_path}')
+        print("Edit engineer_review.json, then type 'e' to reload it, or 'q' to abort.")
+
+        while True:
+            choice = input('> ').strip().lower()
+            if choice == 'q':
+                raise RuntimeError('Run aborted during engineer review')
+            if choice == 'e':
+                payload = json.loads(review_path.read_text(encoding='utf-8'))
+                review_payload = payload.get('engineer_review', {})
+                review = EngineerReview(**review_payload)
+                self._validate_engineer_review(review)
+                dump_json(review_path, {**payload, 'engineer_review': asdict(review)})
+                return review
+            print("Invalid choice. Use 'e' after editing the review JSON, or 'q' to abort.")
+
+    def _is_iteration_accepted(self, evaluation: object, engineer_review: EngineerReview | None) -> bool:
+        auto_passed = bool(getattr(evaluation, 'passed', False))
+        if engineer_review is None:
+            return auto_passed
+        if engineer_review.force_revise:
+            return False
+        if engineer_review.force_accept:
+            return True
+        return auto_passed and engineer_review.approved
+
+    def _validate_engineer_review(self, review: EngineerReview) -> None:
+        if review.overall not in {'good', 'bad', 'mixed'}:
+            raise ValueError("engineer_review.overall must be one of: good, bad, mixed")
+        if review.overall in {'bad', 'mixed'}:
+            if not review.bad_points and not review.issue_locations and not review.revision_suggestions:
+                raise ValueError(
+                    "engineer_review with overall 'bad' or 'mixed' must include bad_points, issue_locations, or revision_suggestions"
+                )
+
+
+def _extract_knowledge_refs(strategy: dict[str, object], control: object) -> list[str]:
+    refs: list[str] = []
+    strategy_refs = strategy.get('knowledge_refs', [])
+    if isinstance(strategy_refs, list):
+        refs.extend(str(ref) for ref in strategy_refs)
+    control_refs = getattr(control, 'references', [])
+    if isinstance(control_refs, list):
+        refs.extend(str(ref) for ref in control_refs)
+    merged: list[str] = []
+    for ref in refs:
+        if ref not in merged:
+            merged.append(ref)
+    return merged

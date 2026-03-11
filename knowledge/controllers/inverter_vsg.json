@@ -1,0 +1,18 @@
+{
+  "title": "Three-Phase Inverter VSG Notes",
+  "topic": "strategy",
+  "topology": "inverter_3ph",
+  "architecture": "vsg",
+  "tags": ["weak_grid", "grid_connected"],
+  "source_type": "controller_pattern",
+  "sections": [
+    {
+      "heading": "When to use",
+      "text": "Use a virtual synchronous generator strategy in weak-grid or grid-forming scenarios where inertial response and voltage support are more important than the simplest tracking structure."
+    },
+    {
+      "heading": "Tradeoff",
+      "text": "VSG improves weak-grid behavior but tuning is more sensitive than plain dq control, so current-loop coordination and conservative bandwidth separation are important."
+    }
+  ]
+}

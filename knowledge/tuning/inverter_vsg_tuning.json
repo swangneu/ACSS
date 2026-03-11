@@ -1,0 +1,14 @@
+{
+  "title": "Inverter VSG Tuning Rules",
+  "topic": "tuning",
+  "topology": "inverter_3ph",
+  "architecture": "vsg",
+  "tags": ["weak_grid", "grid_connected"],
+  "source_type": "tuning_rule",
+  "sections": [
+    {
+      "heading": "Weak-grid caution",
+      "text": "For VSG control, use conservative gains and preserve clear time-scale separation between virtual machine dynamics and current regulation. Overly aggressive gains can amplify weak-grid oscillation risk."
+    }
+  ]
+}

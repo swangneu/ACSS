@@ -1,0 +1,14 @@
+{
+  "title": "PFC Current-Mode Notes",
+  "topic": "strategy",
+  "topology": "pfc",
+  "architecture": "pfc_current_mode",
+  "tags": ["pfc", "current_loop", "inrush"],
+  "source_type": "controller_pattern",
+  "sections": [
+    {
+      "heading": "Recommended structure",
+      "text": "For boost PFC and rectifier applications, use a dual-loop structure with an inner current loop and slower outer voltage loop. Startup current limiting should be explicit rather than implied."
+    }
+  ]
+}

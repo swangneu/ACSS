@@ -4,11 +4,13 @@ from dataclasses import asdict
 
 from src.contracts import EvaluationResult, RequirementSpec, TopologyDesign
 from src.llm import DeepSeekClient
+from src.rag import LocalKnowledgeBase, extract_references, format_retrieved_context
 
 
 class ControlStrategyAgent:
     def __init__(self) -> None:
         self.client = DeepSeekClient()
+        self.knowledge = LocalKnowledgeBase()
 
     def choose(
         self,
@@ -17,12 +19,15 @@ class ControlStrategyAgent:
         iteration: int,
         previous_evaluation: EvaluationResult | None = None,
     ) -> dict[str, object]:
+        context = self._retrieve_context(req, topology, previous_evaluation)
         if self.client.enabled:
             try:
-                return self._choose_with_llm(req, topology, iteration, previous_evaluation)
+                decision = self._choose_with_llm(req, topology, iteration, previous_evaluation, context)
+                return self._attach_context(decision, context)
             except Exception:
                 pass
-        return self._choose_rule_based(req, topology, iteration, previous_evaluation)
+        decision = self._choose_rule_based(req, topology, iteration, previous_evaluation)
+        return self._attach_context(decision, context)
 
     def _choose_rule_based(
         self,
@@ -117,6 +122,7 @@ class ControlStrategyAgent:
         topology: TopologyDesign,
         iteration: int,
         previous_evaluation: EvaluationResult | None,
+        retrieved_context: object,
     ) -> dict[str, object]:
         system_prompt = (
             "You are a power-electronics control strategy selector. "
@@ -130,6 +136,7 @@ class ControlStrategyAgent:
             f"iteration={iteration}\n"
             f"previous_evaluation={asdict(previous_evaluation) if previous_evaluation else None}\n"
             f"design_prompt={req.design_prompt}\n"
+            f"retrieved_knowledge=\n{format_retrieved_context(retrieved_context)}\n"
             "Choose robust strategy for converter barriers, load step, grid connection, and inrush."
         )
         data = self.client.complete_json(system_prompt, user_prompt, temperature=0.1)
@@ -137,3 +144,49 @@ class ControlStrategyAgent:
         if not required.issubset(data.keys()):
             raise ValueError('LLM strategy response missing required fields')
         return data
+
+    def _retrieve_context(
+        self,
+        req: RequirementSpec,
+        topology: TopologyDesign,
+        previous_evaluation: EvaluationResult | None,
+    ):
+        query = (
+            f"{req.name} {req.design_prompt} {req.control_design_notes or ''} "
+            f"topology={topology.topology} previous_violations={previous_evaluation.violations if previous_evaluation else []}"
+        )
+        return self.knowledge.retrieve(
+            query,
+            topic='strategy',
+            topology=topology.topology,
+            tags=_strategy_tags(req, previous_evaluation),
+            top_k=3,
+        )
+
+    def _attach_context(self, decision: dict[str, object], context: object) -> dict[str, object]:
+        merged = dict(decision)
+        refs = extract_references(context)
+        rationale = merged.get('rationale', [])
+        if not isinstance(rationale, list):
+            rationale = [str(rationale)]
+        if refs:
+            rationale.append(f"Knowledge refs: {', '.join(refs)}")
+        merged['rationale'] = rationale
+        merged['knowledge_refs'] = refs
+        merged['knowledge_context'] = format_retrieved_context(context)
+        return merged
+
+
+def _strategy_tags(req: RequirementSpec, previous_evaluation: EvaluationResult | None) -> list[str]:
+    tags: list[str] = []
+    if req.grid_connected:
+        tags.append('grid_connected')
+    if req.weak_grid_mode:
+        tags.append('weak_grid')
+    if req.load_step_pct is not None:
+        tags.append('load_step')
+    if req.inrush_limit_a is not None:
+        tags.append('inrush')
+    if previous_evaluation and not previous_evaluation.passed:
+        tags.append('revision')
+    return tags

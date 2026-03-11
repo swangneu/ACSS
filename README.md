@@ -27,6 +27,10 @@ Optional human-in-the-loop mode:
 - Add `--human-review` to pause after topology, sensors, control strategy, control, simulation, evaluation, and post-revision outputs.
 - At each pause, ACSS writes a `*.review.json` file for that step.
 - Press `Enter` to accept the current result, type `e` after editing the JSON file to reload your changes, or type `q` to abort the run.
+- After each evaluation, ACSS also writes `engineer_review.json` for the iteration.
+- The engineer must edit that file and reload it with `e`.
+- `engineer_review.json` records whether the round is good or bad, where the issues are, and what revisions should happen next.
+- A round is accepted only when automated evaluation passes and the engineer approves it, unless `force_accept` or `force_revise` is used.
 
 What `model_payload.json` means (plain words):
 - It is the handoff package for that iteration.
@@ -108,7 +112,37 @@ Each run creates `runs/<timestamp>_<requirements.name>/` with:
   - `matlab_result.json`, `matlab_stdout.log`, `matlab_stderr.log` when MATLAB is invoked
 - `run_summary.json`
 - `topology.review.json` in the run root when `--human-review` is enabled
+- `engineer_review.json` in each iteration folder when `--human-review` is enabled
 - `final_artifacts/` only if an iteration passes evaluation
+
+`engineer_review.json` shape:
+```json
+{
+  "iteration": 0,
+  "requirements_name": "buck_48_to_12_500w",
+  "auto_assessment": {
+    "passed": false,
+    "violations": ["overshoot_pct 7.5 > 5.0"],
+    "score": 0.8
+  },
+  "strategy": {},
+  "control": {},
+  "simulation_metrics": {},
+  "knowledge_refs": [],
+  "engineer_review": {
+    "approved": false,
+    "overall": "bad",
+    "good_points": [],
+    "bad_points": ["Outer-loop transient is too aggressive"],
+    "issue_locations": ["Voltage response near load step"],
+    "revision_suggestions": ["Use cascaded current-mode control before increasing gains again"],
+    "reviewer": "engineer_a",
+    "notes": "Observed overshoot around the first transient.",
+    "force_accept": false,
+    "force_revise": true
+  }
+}
+```
 
 ## Template behavior
 `--template-slx` is required on every run. The orchestrator validates that the provided `.slx` exists before iteration starts.
@@ -123,6 +157,36 @@ If `DEEPSEEK_API_KEY` is set, it can use DeepSeek for strategy selection:
 - `DEEPSEEK_API_KEY`
 - Optional: `DEEPSEEK_MODEL` (default `deepseek-chat`)
 - Optional: `DEEPSEEK_BASE_URL` (default `https://api.deepseek.com`)
+
+## Local controller-design knowledge base
+ACSS can now use a local retrieval layer for controller-design guidance.
+
+- Knowledge lives under `knowledge/` as JSON documents with sectioned content.
+- A local index is built lazily into `knowledge/index.json`.
+- Retrieval is used by `ControlStrategyAgent` and `ControlAgent`.
+- Retrieved references are stored in strategy outputs and control design artifacts.
+
+This is intentionally stdlib-only in the current scaffold:
+- no external vector database
+- no embedding dependency
+- deterministic lexical retrieval plus topology/architecture/tag matching
+
+Knowledge document shape:
+```json
+{
+  "title": "Buck PI Strategy Notes",
+  "topic": "strategy",
+  "topology": "buck",
+  "architecture": "pi",
+  "tags": ["load_step"],
+  "sections": [
+    {
+      "heading": "When to use",
+      "text": "Use a voltage-loop PI controller for straightforward buck regulation when bandwidth targets are moderate."
+    }
+  ]
+}
+```
 
 ## Workflow diagram
 - Editable source: `images/workflows/acss_workflow.excalidraw`

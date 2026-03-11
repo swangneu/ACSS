@@ -1,0 +1,18 @@
+{
+  "title": "Buck Cascaded Tuning Rules",
+  "topic": "tuning",
+  "topology": "buck",
+  "architecture": "cascaded",
+  "tags": ["buck", "current_loop", "load_step", "revision"],
+  "source_type": "tuning_rule",
+  "sections": [
+    {
+      "heading": "Bandwidth separation",
+      "text": "Tune the current inner loop substantially faster than the voltage outer loop so that the outer loop sees a well-regulated current actuator. This separation is the main reason cascaded control improves transient response."
+    },
+    {
+      "heading": "Revision note",
+      "text": "When the design has already failed multiple transient checks, prefer changing loop structure before pushing gains to aggressive values that may hurt efficiency or robustness."
+    }
+  ]
+}

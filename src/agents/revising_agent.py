@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.contracts import ControlDesign, EvaluationResult, RequirementSpec, TopologyDesign
+from src.contracts import ControlDesign, EngineerReview, EvaluationResult, RequirementSpec, TopologyDesign
 
 
 class RevisingAgent:
@@ -10,6 +10,7 @@ class RevisingAgent:
         topology: TopologyDesign,
         control: ControlDesign,
         evaluation: EvaluationResult,
+        engineer_review: EngineerReview | None,
         iteration: int,
     ) -> tuple[TopologyDesign, ControlDesign]:
         violations = " | ".join(evaluation.violations).lower()
@@ -31,6 +32,16 @@ class RevisingAgent:
 
         if iteration >= 1 and not evaluation.passed:
             notes_to_add.append('Escalate control structure if needed (not only gain tuning).')
+
+        if engineer_review is not None:
+            for point in engineer_review.bad_points:
+                notes_to_add.append(f'Engineer flagged bad point: {point}')
+            for location in engineer_review.issue_locations:
+                notes_to_add.append(f'Engineer issue location: {location}')
+            for suggestion in engineer_review.revision_suggestions:
+                notes_to_add.append(f'Engineer revision suggestion: {suggestion}')
+            if engineer_review.force_revise:
+                notes_to_add.append('Engineer requested another revision round before acceptance.')
 
         if notes_to_add:
             existing = (req.control_design_notes or '').strip()

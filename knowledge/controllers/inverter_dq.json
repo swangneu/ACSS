@@ -1,0 +1,18 @@
+{
+  "title": "Three-Phase Inverter dq Notes",
+  "topic": "strategy",
+  "topology": "inverter_3ph",
+  "architecture": "dq",
+  "tags": ["grid_connected", "inrush", "current_loop"],
+  "source_type": "controller_pattern",
+  "sections": [
+    {
+      "heading": "Default approach",
+      "text": "For three-phase inverter control, use synchronous-frame dq current regulation with an outer voltage or power loop when the application is grid connected and does not explicitly require grid-forming behavior."
+    },
+    {
+      "heading": "Implementation note",
+      "text": "Keep the current loop active by default and pair it with inrush limiting when startup current or grid synchronization can stress the converter."
+    }
+  ]
+}

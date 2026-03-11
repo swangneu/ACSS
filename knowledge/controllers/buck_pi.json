@@ -1,0 +1,18 @@
+{
+  "title": "Buck PI Strategy Notes",
+  "topic": "strategy",
+  "topology": "buck",
+  "architecture": "pi",
+  "tags": ["buck", "voltage_loop", "practical_implementation"],
+  "source_type": "controller_pattern",
+  "sections": [
+    {
+      "heading": "When to use",
+      "text": "Use a single voltage-loop PI controller for buck converters when the plant is well damped and implementation simplicity matters. This is the default starting point for non-isolated buck regulation."
+    },
+    {
+      "heading": "Escalation trigger",
+      "text": "Escalate to cascaded current-mode control when transient recovery is too slow, overshoot remains high after reasonable gain tuning, or output filtering needs stronger disturbance rejection."
+    }
+  ]
+}

@@ -1,0 +1,273 @@
+[
+  {
+    "chunk_id": "buck_cascaded:0",
+    "source_path": "controllers\\buck_cascaded.json",
+    "title": "Buck Cascaded Control Notes",
+    "section": "When to use",
+    "text": "Use cascaded current-inner and voltage-outer loops for buck converters that must handle aggressive load steps or tighter transient limits than a plain voltage loop can satisfy.",
+    "topic": "strategy",
+    "topology": "buck",
+    "architecture": "cascaded",
+    "tags": [
+      "buck",
+      "current_loop",
+      "load_step",
+      "revision"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "buck_cascaded:1",
+    "source_path": "controllers\\buck_cascaded.json",
+    "title": "Buck Cascaded Control Notes",
+    "section": "Revision hint",
+    "text": "If repeated evaluation failures cite overshoot or settling time, promote the design from plain PI to cascaded control before continuing to increase gains.",
+    "topic": "strategy",
+    "topology": "buck",
+    "architecture": "cascaded",
+    "tags": [
+      "buck",
+      "current_loop",
+      "load_step",
+      "revision"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "buck_pi:0",
+    "source_path": "controllers\\buck_pi.json",
+    "title": "Buck PI Strategy Notes",
+    "section": "When to use",
+    "text": "Use a single voltage-loop PI controller for buck converters when the plant is well damped and implementation simplicity matters. This is the default starting point for non-isolated buck regulation.",
+    "topic": "strategy",
+    "topology": "buck",
+    "architecture": "pi",
+    "tags": [
+      "buck",
+      "voltage_loop",
+      "practical_implementation"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "buck_pi:1",
+    "source_path": "controllers\\buck_pi.json",
+    "title": "Buck PI Strategy Notes",
+    "section": "Escalation trigger",
+    "text": "Escalate to cascaded current-mode control when transient recovery is too slow, overshoot remains high after reasonable gain tuning, or output filtering needs stronger disturbance rejection.",
+    "topic": "strategy",
+    "topology": "buck",
+    "architecture": "pi",
+    "tags": [
+      "buck",
+      "voltage_loop",
+      "practical_implementation"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "inverter_dq:0",
+    "source_path": "controllers\\inverter_dq.json",
+    "title": "Three-Phase Inverter dq Notes",
+    "section": "Default approach",
+    "text": "For three-phase inverter control, use synchronous-frame dq current regulation with an outer voltage or power loop when the application is grid connected and does not explicitly require grid-forming behavior.",
+    "topic": "strategy",
+    "topology": "inverter_3ph",
+    "architecture": "dq",
+    "tags": [
+      "grid_connected",
+      "inrush",
+      "current_loop"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "inverter_dq:1",
+    "source_path": "controllers\\inverter_dq.json",
+    "title": "Three-Phase Inverter dq Notes",
+    "section": "Implementation note",
+    "text": "Keep the current loop active by default and pair it with inrush limiting when startup current or grid synchronization can stress the converter.",
+    "topic": "strategy",
+    "topology": "inverter_3ph",
+    "architecture": "dq",
+    "tags": [
+      "grid_connected",
+      "inrush",
+      "current_loop"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "inverter_vsg:0",
+    "source_path": "controllers\\inverter_vsg.json",
+    "title": "Three-Phase Inverter VSG Notes",
+    "section": "When to use",
+    "text": "Use a virtual synchronous generator strategy in weak-grid or grid-forming scenarios where inertial response and voltage support are more important than the simplest tracking structure.",
+    "topic": "strategy",
+    "topology": "inverter_3ph",
+    "architecture": "vsg",
+    "tags": [
+      "weak_grid",
+      "grid_connected"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "inverter_vsg:1",
+    "source_path": "controllers\\inverter_vsg.json",
+    "title": "Three-Phase Inverter VSG Notes",
+    "section": "Tradeoff",
+    "text": "VSG improves weak-grid behavior but tuning is more sensitive than plain dq control, so current-loop coordination and conservative bandwidth separation are important.",
+    "topic": "strategy",
+    "topology": "inverter_3ph",
+    "architecture": "vsg",
+    "tags": [
+      "weak_grid",
+      "grid_connected"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "pfc_current_mode:0",
+    "source_path": "controllers\\pfc_current_mode.json",
+    "title": "PFC Current-Mode Notes",
+    "section": "Recommended structure",
+    "text": "For boost PFC and rectifier applications, use a dual-loop structure with an inner current loop and slower outer voltage loop. Startup current limiting should be explicit rather than implied.",
+    "topic": "strategy",
+    "topology": "pfc",
+    "architecture": "pfc_current_mode",
+    "tags": [
+      "pfc",
+      "current_loop",
+      "inrush"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "buck_cascaded_tuning:0",
+    "source_path": "tuning\\buck_cascaded_tuning.json",
+    "title": "Buck Cascaded Tuning Rules",
+    "section": "Bandwidth separation",
+    "text": "Tune the current inner loop substantially faster than the voltage outer loop so that the outer loop sees a well-regulated current actuator. This separation is the main reason cascaded control improves transient response.",
+    "topic": "tuning",
+    "topology": "buck",
+    "architecture": "cascaded",
+    "tags": [
+      "buck",
+      "current_loop",
+      "load_step",
+      "revision"
+    ],
+    "metadata": {
+      "source_type": "tuning_rule"
+    }
+  },
+  {
+    "chunk_id": "buck_cascaded_tuning:1",
+    "source_path": "tuning\\buck_cascaded_tuning.json",
+    "title": "Buck Cascaded Tuning Rules",
+    "section": "Revision note",
+    "text": "When the design has already failed multiple transient checks, prefer changing loop structure before pushing gains to aggressive values that may hurt efficiency or robustness.",
+    "topic": "tuning",
+    "topology": "buck",
+    "architecture": "cascaded",
+    "tags": [
+      "buck",
+      "current_loop",
+      "load_step",
+      "revision"
+    ],
+    "metadata": {
+      "source_type": "tuning_rule"
+    }
+  },
+  {
+    "chunk_id": "buck_pi_tuning:0",
+    "source_path": "tuning\\buck_pi_tuning.json",
+    "title": "Buck PI Tuning Rules",
+    "section": "Sampling",
+    "text": "A practical digital voltage-loop PI implementation for a buck converter often uses a sample time faster than the switching period subdivision already exposed by the control pipeline. Avoid selecting a sample time slower than the dominant output dynamics.",
+    "topic": "tuning",
+    "topology": "buck",
+    "architecture": "pi",
+    "tags": [
+      "buck",
+      "sampling",
+      "practical_implementation"
+    ],
+    "metadata": {
+      "source_type": "tuning_rule"
+    }
+  },
+  {
+    "chunk_id": "buck_pi_tuning:1",
+    "source_path": "tuning\\buck_pi_tuning.json",
+    "title": "Buck PI Tuning Rules",
+    "section": "Gain direction",
+    "text": "If the response is too sluggish and stable, increase proportional gain first, then integral gain. If overshoot rises sharply, back off proportional gain or add current-loop structure instead of only raising integral gain.",
+    "topic": "tuning",
+    "topology": "buck",
+    "architecture": "pi",
+    "tags": [
+      "buck",
+      "sampling",
+      "practical_implementation"
+    ],
+    "metadata": {
+      "source_type": "tuning_rule"
+    }
+  },
+  {
+    "chunk_id": "inverter_dq_tuning:0",
+    "source_path": "tuning\\inverter_dq_tuning.json",
+    "title": "Inverter dq Tuning Rules",
+    "section": "Loop ordering",
+    "text": "For dq control, tune the current loop before the outer voltage or power loop. The inner loop should dominate dynamic response and operate at the fastest practical sample time available in the switching workflow.",
+    "topic": "tuning",
+    "topology": "inverter_3ph",
+    "architecture": "dq",
+    "tags": [
+      "grid_connected",
+      "current_loop",
+      "sampling"
+    ],
+    "metadata": {
+      "source_type": "tuning_rule"
+    }
+  },
+  {
+    "chunk_id": "inverter_vsg_tuning:0",
+    "source_path": "tuning\\inverter_vsg_tuning.json",
+    "title": "Inverter VSG Tuning Rules",
+    "section": "Weak-grid caution",
+    "text": "For VSG control, use conservative gains and preserve clear time-scale separation between virtual machine dynamics and current regulation. Overly aggressive gains can amplify weak-grid oscillation risk.",
+    "topic": "tuning",
+    "topology": "inverter_3ph",
+    "architecture": "vsg",
+    "tags": [
+      "weak_grid",
+      "grid_connected"
+    ],
+    "metadata": {
+      "source_type": "tuning_rule"
+    }
+  }
+]

@@ -1,0 +1,18 @@
+{
+  "title": "Buck Cascaded Control Notes",
+  "topic": "strategy",
+  "topology": "buck",
+  "architecture": "cascaded",
+  "tags": ["buck", "current_loop", "load_step", "revision"],
+  "source_type": "controller_pattern",
+  "sections": [
+    {
+      "heading": "When to use",
+      "text": "Use cascaded current-inner and voltage-outer loops for buck converters that must handle aggressive load steps or tighter transient limits than a plain voltage loop can satisfy."
+    },
+    {
+      "heading": "Revision hint",
+      "text": "If repeated evaluation failures cite overshoot or settling time, promote the design from plain PI to cascaded control before continuing to increase gains."
+    }
+  ]
+}
