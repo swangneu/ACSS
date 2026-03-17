@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import math
 from pathlib import Path
 from dataclasses import asdict
@@ -91,9 +92,11 @@ class SimulationAgent:
         if use_matlab:
             maybe = run_matlab_stub(payload_path, out_dir, template_path)
             if maybe is not None:
+                maybe.waveform_image_files = _export_waveform_images(maybe.waveform_files, out_dir)
                 maybe.code_files = code_files
                 maybe.raw = {
                     **maybe.raw,
+                    'waveform_image_files': maybe.waveform_image_files,
                     'parameter_resolution': {
                         'resolved_symbols': sorted(resolved_values.keys()),
                         'unresolved_symbols': unresolved_symbols,
@@ -124,6 +127,7 @@ class SimulationAgent:
         }
         wf_path = out_dir / 'waveforms.json'
         dump_json(wf_path, waveforms)
+        image_files = _export_waveform_images([str(wf_path)], out_dir)
 
         raw = {
             'mode': 'synthetic',
@@ -131,12 +135,19 @@ class SimulationAgent:
             'control': asdict(control),
             'topology': asdict(topology),
             'validation': 'synthetic_after_matlab_failure' if use_matlab else 'synthetic',
+            'waveform_image_files': image_files,
             'parameter_resolution': {
                 'resolved_symbols': sorted(resolved_values.keys()),
                 'unresolved_symbols': unresolved_symbols,
             },
         }
-        return SimulationResult(metrics=metrics, waveform_files=[str(wf_path)], code_files=code_files, raw=raw)
+        return SimulationResult(
+            metrics=metrics,
+            waveform_files=[str(wf_path)],
+            code_files=code_files,
+            raw=raw,
+            waveform_image_files=image_files,
+        )
 
 
 def _render_params_m(
@@ -427,3 +438,101 @@ def _resolve_parameter_values(
             resolved[runtime_symbol] = float(base_candidates[runtime_symbol])
 
     return resolved, unresolved
+
+
+def _export_waveform_images(waveform_files: list[str], out_dir: Path) -> list[str]:
+    images: list[str] = []
+    for waveform_file in waveform_files:
+        wf_path = Path(waveform_file)
+        if not wf_path.exists():
+            continue
+        try:
+            data = json.loads(wf_path.read_text(encoding='utf-8'))
+            time_s = [float(x) for x in data.get('time_s', [])]
+            vout_v = [float(x) for x in data.get('vout_v', [])]
+        except Exception:
+            continue
+        if len(time_s) < 2 or len(vout_v) < 2 or len(time_s) != len(vout_v):
+            continue
+
+        image_path = out_dir / f'{wf_path.stem}.svg'
+        image_path.write_text(_render_waveform_svg(time_s, vout_v), encoding='utf-8')
+        images.append(str(image_path))
+    return images
+
+
+def _render_waveform_svg(time_s: list[float], vout_v: list[float]) -> str:
+    width = 960
+    height = 540
+    left = 80
+    right = 30
+    top = 35
+    bottom = 60
+    plot_w = width - left - right
+    plot_h = height - top - bottom
+
+    min_t = min(time_s)
+    max_t = max(time_s)
+    min_v = min(vout_v)
+    max_v = max(vout_v)
+    if math.isclose(max_t, min_t):
+        max_t = min_t + 1.0
+    if math.isclose(max_v, min_v):
+        pad = max(abs(max_v) * 0.1, 1.0)
+        min_v -= pad
+        max_v += pad
+
+    v_pad = max((max_v - min_v) * 0.08, 0.1)
+    min_v -= v_pad
+    max_v += v_pad
+
+    def sx(t: float) -> float:
+        return left + (t - min_t) / (max_t - min_t) * plot_w
+
+    def sy(v: float) -> float:
+        return top + (max_v - v) / (max_v - min_v) * plot_h
+
+    points = " ".join(f"{sx(t):.2f},{sy(v):.2f}" for t, v in zip(time_s, vout_v))
+
+    grid_lines: list[str] = []
+    labels: list[str] = []
+    for i in range(5):
+        frac = i / 4
+        x = left + frac * plot_w
+        t = min_t + frac * (max_t - min_t)
+        grid_lines.append(
+            f'<line x1="{x:.2f}" y1="{top}" x2="{x:.2f}" y2="{top + plot_h}" '
+            'stroke="#d7dde5" stroke-width="1" />'
+        )
+        labels.append(
+            f'<text x="{x:.2f}" y="{height - 20}" text-anchor="middle" font-size="12" '
+            f'font-family="Segoe UI, Arial, sans-serif" fill="#445066">{t * 1000:.2f} ms</text>'
+        )
+    for i in range(5):
+        frac = i / 4
+        y = top + frac * plot_h
+        v = max_v - frac * (max_v - min_v)
+        grid_lines.append(
+            f'<line x1="{left}" y1="{y:.2f}" x2="{left + plot_w}" y2="{y:.2f}" '
+            'stroke="#d7dde5" stroke-width="1" />'
+        )
+        labels.append(
+            f'<text x="{left - 10}" y="{y + 5:.2f}" text-anchor="end" font-size="12" '
+            f'font-family="Segoe UI, Arial, sans-serif" fill="#445066">{v:.2f} V</text>'
+        )
+
+    return "\n".join(
+        [
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
+            '<rect width="100%" height="100%" fill="#fbfcfe" />',
+            '<text x="80" y="24" font-size="20" font-family="Segoe UI, Arial, sans-serif" fill="#10233f">Output Waveform</text>',
+            '<text x="80" y="44" font-size="12" font-family="Segoe UI, Arial, sans-serif" fill="#4b5d79">Generated by ACSS run export</text>',
+            *grid_lines,
+            f'<rect x="{left}" y="{top}" width="{plot_w}" height="{plot_h}" fill="none" stroke="#6f7f95" stroke-width="1.2" />',
+            f'<polyline fill="none" stroke="#0b84f3" stroke-width="3" points="{points}" />',
+            *labels,
+            '<text x="500" y="520" text-anchor="middle" font-size="13" font-family="Segoe UI, Arial, sans-serif" fill="#23344d">Time</text>',
+            '<text x="22" y="255" text-anchor="middle" font-size="13" font-family="Segoe UI, Arial, sans-serif" fill="#23344d" transform="rotate(-90 22 255)">Voltage</text>',
+            '</svg>',
+        ]
+    )

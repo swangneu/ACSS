@@ -108,7 +108,8 @@ Each run creates `runs/<timestamp>_<requirements.name>/` with:
   - `*.review.json` files when `--human-review` is enabled
   - `acss_params.m`
   - `control_sfunc_wrapper.c` (or template module name)
-  - `waveforms.json` (synthetic) or `*_waveform.json` via MATLAB result
+- `waveforms.json` (synthetic) or `*_waveform.json` via MATLAB result
+- `waveforms.svg` or `*_waveform.svg` preview images for quick inspection
   - `matlab_result.json`, `matlab_stdout.log`, `matlab_stderr.log` when MATLAB is invoked
 - `run_summary.json`
 - `topology.review.json` in the run root when `--human-review` is enabled

@@ -268,9 +268,9 @@
     {
       "id": "t_pass",
       "type": "text",
-      "x": 256.7896486646581,
-      "y": 909.7310385553552,
-      "width": 132,
+      "x": 188.21822009322943,
+      "y": 906.8738956982124,
+      "width": 264,
       "height": 50,
       "angle": 0,
       "strokeColor": "#1e1e1e",
@@ -283,11 +283,11 @@
       "groupIds": [],
       "frameId": null,
       "seed": 112,
-      "version": 543,
-      "versionNonce": 179289911,
+      "version": 559,
+      "versionNonce": 1729076868,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1772166414178,
+      "updated": 1773781200156,
       "link": null,
       "locked": false,
       "text": "Accepted round?\nauto pass + review rules",
@@ -380,7 +380,7 @@
       "x": 212.27178490756376,
       "y": 1067.0936804328876,
       "width": 211.8659598556751,
-      "height": 92,
+      "height": 134.85714285714286,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "#d3f9d8",
@@ -395,8 +395,8 @@
         "type": 3
       },
       "seed": 115,
-      "version": 502,
-      "versionNonce": 2000325399,
+      "version": 516,
+      "versionNonce": 1778539324,
       "isDeleted": false,
       "boundElements": [
         {
@@ -408,7 +408,7 @@
           "type": "arrow"
         }
       ],
-      "updated": 1772166388807,
+      "updated": 1773781232187,
       "link": null,
       "locked": false,
       "index": "aE"
@@ -419,7 +419,7 @@
       "x": 226.3103580551437,
       "y": 1090.5533960974608,
       "width": 187.51350087870418,
-      "height": 50,
+      "height": 100,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -431,14 +431,19 @@
       "groupIds": [],
       "frameId": null,
       "seed": 116,
-      "version": 493,
-      "versionNonce": 1306137196,
+      "version": 495,
+      "versionNonce": 2082924860,
       "isDeleted": false,
-      "boundElements": [],
-      "updated": 1772145759254,
+      "boundElements": [
+        {
+          "id": "igMDQVeGe8UPrSmchd8zH",
+          "type": "arrow"
+        }
+      ],
+      "updated": 1773781235934,
       "link": null,
       "locked": false,
-      "text": "Publish final_artifacts/\nand run_summary.json",
+      "text": "Publish\nfinal_artifacts/\nand\nrun_summary.json",
       "fontSize": 20,
       "fontFamily": 8,
       "textAlign": "center",
@@ -550,7 +555,7 @@
       "x": 323.673727049335,
       "y": 995.0288885926058,
       "width": 0,
-      "height": 70.29911339094485,
+      "height": 69.74445532888205,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -562,11 +567,11 @@
       "groupIds": [],
       "frameId": null,
       "seed": 121,
-      "version": 684,
-      "versionNonce": 1406825145,
+      "version": 700,
+      "versionNonce": 286055740,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1772166388808,
+      "updated": 1773781232438,
       "link": null,
       "locked": false,
       "points": [
@@ -576,7 +581,7 @@
         ],
         [
           0,
-          70.29911339094485
+          69.74445532888205
         ]
       ],
       "lastCommittedPoint": null,
@@ -975,7 +980,7 @@
       "x": 138.5290237702406,
       "y": 658.162061299045,
       "width": 380,
-      "height": 25,
+      "height": 100,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -987,8 +992,8 @@
       "groupIds": [],
       "frameId": null,
       "seed": 305,
-      "version": 180,
-      "versionNonce": 1520513260,
+      "version": 181,
+      "versionNonce": 252669628,
       "isDeleted": false,
       "boundElements": [
         {
@@ -996,10 +1001,10 @@
           "type": "arrow"
         }
       ],
-      "updated": 1772145503996,
+      "updated": 1773781187917,
       "link": null,
       "locked": false,
-      "text": "Simulation agent: parse .slx, emit acss_params.m + wrapper C,\nrun MATLAB/Simulink or synthetic fallback",
+      "text": "Simulation agent: parse .slx, emit\nacss_params.m + wrapper C, run\nMATLAB/Simulink or synthetic\nfallback",
       "fontSize": 20,
       "fontFamily": 8,
       "textAlign": "center",
@@ -1119,7 +1124,7 @@
       "x": 192.42079188304172,
       "y": 731.9160131289572,
       "width": 259.91931459266755,
-      "height": 25,
+      "height": 50,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -1131,14 +1136,14 @@
       "groupIds": [],
       "frameId": null,
       "seed": 307,
-      "version": 348,
-      "versionNonce": 702884564,
+      "version": 349,
+      "versionNonce": 154835004,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1772145613629,
+      "updated": 1773781195071,
       "link": null,
       "locked": false,
-      "text": "Write summary.json\nfor this iteration",
+      "text": "Write summary.json for\nthis iteration",
       "fontSize": 20,
       "fontFamily": 8,
       "textAlign": "center",
@@ -1687,10 +1692,10 @@
     {
       "id": "fLtNQVpR4hmqNCgIjV0i7",
       "type": "rectangle",
-      "x": 557.5996708103751,
-      "y": 1049.4502393011699,
+      "x": 552.5996708103751,
+      "y": 1046.9502393011699,
       "width": 385.5742449074493,
-      "height": 126.76862868356238,
+      "height": 179.26862868356244,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "#d3f9d8",
@@ -1705,8 +1710,8 @@
         "type": 3
       },
       "seed": 220395476,
-      "version": 622,
-      "versionNonce": 669538105,
+      "version": 653,
+      "versionNonce": 273028484,
       "isDeleted": false,
       "boundElements": [
         {
@@ -1714,7 +1719,7 @@
           "type": "arrow"
         }
       ],
-      "updated": 1772166387943,
+      "updated": 1773781244854,
       "link": null,
       "locked": false,
       "index": "bAI"
@@ -1722,10 +1727,10 @@
     {
       "id": "-eUZVxGrJ6Wc9_fj9wXP6",
       "type": "text",
-      "x": 572.7459500686402,
+      "x": 567.7459500686402,
       "y": 1062.6245450106635,
       "width": 356.44749378430896,
-      "height": 100,
+      "height": 150,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -1737,14 +1742,19 @@
       "groupIds": [],
       "frameId": null,
       "seed": 157792468,
-      "version": 814,
-      "versionNonce": 1984913900,
+      "version": 834,
+      "versionNonce": 1316164356,
       "isDeleted": false,
-      "boundElements": [],
-      "updated": 1772145834333,
+      "boundElements": [
+        {
+          "id": "igMDQVeGe8UPrSmchd8zH",
+          "type": "arrow"
+        }
+      ],
+      "updated": 1773781247854,
       "link": null,
       "locked": false,
-      "text": "Accepted iterations publish final control files.\nFinal validation must use mode\nsimulink_matlab.\n\n--human-review also writes\n*.review.json and engineer_review.json.",
+      "text": "Accepted iterations publish\nfinal control files. Final\nvalidation must use mode\nsimulink_matlab. --human-review\nalso writes *.review.json and\nengineer_review.json.",
       "fontSize": 20,
       "fontFamily": 8,
       "textAlign": "left",
@@ -1759,10 +1769,10 @@
     {
       "id": "igMDQVeGe8UPrSmchd8zH",
       "type": "arrow",
-      "x": 430.4191222744481,
-      "y": 1113.6667919410593,
-      "width": 117.64056597545766,
-      "height": 0.11212802034833658,
+      "x": 429.9312339417014,
+      "y": 1129.2976146765234,
+      "width": 110.27131145106148,
+      "height": 1.566452649009534,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "#e7f5ff",
@@ -1778,11 +1788,11 @@
         "type": 2
       },
       "seed": 1359746388,
-      "version": 86,
-      "versionNonce": 400070105,
+      "version": 142,
+      "versionNonce": 2232964,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1772166388807,
+      "updated": 1773781247854,
       "link": null,
       "locked": false,
       "points": [
@@ -1791,20 +1801,20 @@
           0
         ],
         [
-          117.64056597545766,
-          -0.11212802034833658
+          110.27131145106148,
+          -1.566452649009534
         ]
       ],
       "lastCommittedPoint": null,
       "startBinding": {
-        "elementId": "n_end",
-        "focus": 0.012458945829814914,
-        "gap": 6.937932175544688
+        "elementId": "t_end",
+        "focus": -0.1890825801164749,
+        "gap": 16.107375007853534
       },
       "endBinding": {
-        "elementId": "fLtNQVpR4hmqNCgIjV0i7",
-        "focus": -0.013130035510374189,
-        "gap": 10.146930603240662
+        "elementId": "-eUZVxGrJ6Wc9_fj9wXP6",
+        "focus": 0.1653921407411994,
+        "gap": 27.543404675877355
       },
       "startArrowhead": null,
       "endArrowhead": "arrow",
@@ -2333,9 +2343,9 @@
     {
       "id": "kb_box",
       "type": "rectangle",
-      "x": -268.0000000000001,
+      "x": -355.0000000000001,
       "y": 420.66666666666674,
-      "width": 288,
+      "width": 336,
       "height": 146,
       "angle": 0,
       "strokeColor": "#495057",
@@ -2351,8 +2361,8 @@
         "type": 3
       },
       "seed": 180000001,
-      "version": 86,
-      "versionNonce": 128061146,
+      "version": 122,
+      "versionNonce": 1921422524,
       "isDeleted": false,
       "boundElements": [
         {
@@ -2364,7 +2374,7 @@
           "type": "arrow"
         }
       ],
-      "updated": 1773266350851,
+      "updated": 1773781015305,
       "link": null,
       "locked": false,
       "index": "bAQ"
@@ -2372,8 +2382,8 @@
     {
       "id": "kb_text",
       "type": "text",
-      "x": -257.11111111111114,
-      "y": 433.55555555555543,
+      "x": -323.11111111111114,
+      "y": 432.55555555555543,
       "width": 286,
       "height": 125,
       "angle": 0,
@@ -2387,8 +2397,8 @@
       "groupIds": [],
       "frameId": null,
       "seed": 180000002,
-      "version": 115,
-      "versionNonce": 1664875482,
+      "version": 191,
+      "versionNonce": 1237514684,
       "isDeleted": false,
       "boundElements": [
         {
@@ -2396,7 +2406,7 @@
           "type": "arrow"
         }
       ],
-      "updated": 1773266358817,
+      "updated": 1773781012423,
       "link": null,
       "locked": false,
       "text": "Knowledge base / retrieval\nknowledge/index.json +\ncontrollers + tuning\nmatched by topology/\narchitecture/tags",
@@ -2414,10 +2424,10 @@
     {
       "id": "kb_to_strategy",
       "type": "arrow",
-      "x": 21.77900019423899,
-      "y": 465.4082639547867,
-      "width": 71.10515742584047,
-      "height": 3.7597476379709747,
+      "x": -15.001222416461275,
+      "y": 464.4267706433475,
+      "width": 107.88538003654074,
+      "height": 2.778254326531737,
       "angle": 0,
       "strokeColor": "#495057",
       "backgroundColor": "transparent",
@@ -2429,11 +2439,11 @@
       "groupIds": [],
       "frameId": null,
       "seed": 180000003,
-      "version": 111,
-      "versionNonce": 1857351450,
+      "version": 220,
+      "versionNonce": 160203652,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1773266358817,
+      "updated": 1773781018059,
       "link": null,
       "locked": false,
       "points": [
@@ -2442,15 +2452,15 @@
           0
         ],
         [
-          71.10515742584047,
-          -3.7597476379709747
+          107.88538003654074,
+          -2.778254326531737
         ]
       ],
       "lastCommittedPoint": null,
       "startBinding": {
         "elementId": "kb_text",
-        "focus": -0.334878159408221,
-        "gap": 7.109888694649868
+        "focus": -0.3985476713159777,
+        "gap": 22.109888694649868
       },
       "endBinding": null,
       "startArrowhead": null,
@@ -2463,10 +2473,10 @@
     {
       "id": "kb_to_control",
       "type": "arrow",
-      "x": 21.77900019423899,
-      "y": 519.4402356456985,
-      "width": 336.0087612853906,
-      "height": 4.668214116925469,
+      "x": -17.17016439685426,
+      "y": 519.5168669635963,
+      "width": 152.8842189945126,
+      "height": 1.8736599273840966,
       "angle": 0,
       "strokeColor": "#495057",
       "backgroundColor": "transparent",
@@ -2478,11 +2488,11 @@
       "groupIds": [],
       "frameId": null,
       "seed": 180000004,
-      "version": 86,
-      "versionNonce": 1899733082,
+      "version": 122,
+      "versionNonce": 181181756,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1773266350851,
+      "updated": 1773781015305,
       "link": null,
       "locked": false,
       "points": [
@@ -2491,8 +2501,8 @@
           0
         ],
         [
-          336.0087612853906,
-          4.668214116925469
+          152.8842189945126,
+          1.8736599273840966
         ]
       ],
       "lastCommittedPoint": null,

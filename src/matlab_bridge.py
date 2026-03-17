@@ -13,8 +13,10 @@ def run_matlab_stub(payload_path: Path, out_dir: Path, template_slx: Path | None
     if matlab_exe is None:
         return None
 
-    out_json = out_dir / 'matlab_result.json'
-    template_arg = (template_slx.as_posix() if template_slx is not None else '')
+    payload_path = payload_path.resolve()
+    out_dir = out_dir.resolve()
+    out_json = (out_dir / 'matlab_result.json').resolve()
+    template_arg = (template_slx.resolve().as_posix() if template_slx is not None else '')
     cmd = [
         matlab_exe,
         '-batch',
@@ -40,4 +42,10 @@ def run_matlab_stub(payload_path: Path, out_dir: Path, template_slx: Path | None
 
     data = json.loads(out_json.read_text(encoding='utf-8'))
     code_files = data.get('code_files', [])
-    return SimulationResult(metrics=data['metrics'], waveform_files=data['waveform_files'], code_files=code_files, raw=data)
+    return SimulationResult(
+        metrics=data['metrics'],
+        waveform_files=data['waveform_files'],
+        code_files=code_files,
+        raw=data,
+        waveform_image_files=data.get('waveform_image_files', []),
+    )

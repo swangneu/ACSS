@@ -62,6 +62,7 @@ class SimulationResult:
     waveform_files: list[str]
     code_files: list[str]
     raw: dict[str, Any]
+    waveform_image_files: list[str] = field(default_factory=list)
 
 
 @dataclass
