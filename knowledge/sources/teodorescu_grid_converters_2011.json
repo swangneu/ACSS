@@ -1,0 +1,20 @@
+{
+  "title": "Teodorescu Grid Converters Source Metadata",
+  "topic": "source_notes",
+  "source_type": "paper_source",
+  "source_id": "teodorescu_grid_converters_2011",
+  "authors": ["Remus Teodorescu", "Marco Liserre", "Pedro Rodriguez"],
+  "year": 2011,
+  "venue": "Book",
+  "file_path": "papers/grid_converters_for_photovoltaic_and_wind_power_systems.pdf",
+  "sections": [
+    {
+      "heading": "Linked claims",
+      "claim_id": "lcl_damping_requirement",
+      "claim_type": "design_rule",
+      "text": "LCL-filtered grid converters require explicit damping considerations in control design, especially when digital delay is not negligible.",
+      "source_refs": ["teodorescu_grid_converters_2011"],
+      "evidence_strength": "high"
+    }
+  ]
+}

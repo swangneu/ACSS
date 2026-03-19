@@ -1,0 +1,25 @@
+{
+  "title": "Bidirectional DC-DC Converter Dual-Loop Strategy",
+  "topic": "strategy",
+  "topology": "bidirectional_dcdc",
+  "architecture": "dual_loop",
+  "power_stage_family": "dc_dc_bidirectional",
+  "control_objective": "power_flow_regulation",
+  "operating_mode": "bidirectional",
+  "plant_features": ["sign_reversal", "current_limit"],
+  "tags": ["bidirectional", "battery_interface", "current_loop"],
+  "source_type": "controller_pattern",
+  "source_refs": ["mohan_undeland_robbins_2003"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Recommended structure",
+      "text": "For bidirectional DC-DC stages, use a current-regulating inner loop with supervisory voltage or power command generation so charging and discharging share one bounded actuator."
+    },
+    {
+      "heading": "Safety note",
+      "topic": "constraints",
+      "text": "The control layer should carry current and direction limits explicitly because sign reversal during mode changes is a primary source of transient stress."
+    }
+  ]
+}

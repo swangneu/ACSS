@@ -1,0 +1,24 @@
+{
+  "title": "Buck-Boost Converter Generalized Strategy",
+  "topic": "strategy",
+  "topology": "buck_boost",
+  "architecture": "cascaded",
+  "power_stage_family": "dc_dc_nonisolated",
+  "control_objective": "voltage_regulation",
+  "operating_mode": "standalone",
+  "plant_features": ["duty_cycle_nonlinearity", "load_transient"],
+  "tags": ["buck_boost", "current_loop", "wide_range"],
+  "source_type": "controller_pattern",
+  "source_refs": ["mohan_undeland_robbins_2003"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Default structure",
+      "text": "For buck-boost stages operating over a wide conversion ratio, prefer a cascaded current-inner and voltage-outer structure so duty-ratio nonlinearity is handled by a faster inner actuator."
+    },
+    {
+      "heading": "Practical note",
+      "text": "Keep current sensing explicit in the design because a voltage-only loop usually becomes fragile once the operating point spans both buck-like and boost-like regions."
+    }
+  ]
+}

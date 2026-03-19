@@ -1,0 +1,25 @@
+{
+  "title": "Three-Phase LCL Grid-Tied Inverter Strategy",
+  "topic": "strategy",
+  "topology": "inverter_3ph",
+  "architecture": "dq",
+  "power_stage_family": "dc_ac_inverter",
+  "control_objective": "grid_following",
+  "operating_mode": "grid_connected",
+  "plant_features": ["lcl_filter", "grid_synchronization"],
+  "tags": ["grid_connected", "lcl", "current_loop"],
+  "source_type": "controller_pattern",
+  "source_refs": ["teodorescu_grid_converters_2011"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "Default approach",
+      "text": "For a three-phase grid-tied inverter with an LCL filter, use dq current regulation with PLL-based synchronization and treat resonance damping as a first-class design requirement."
+    },
+    {
+      "heading": "Constraint",
+      "topic": "constraints",
+      "text": "Do not assume the LCL resonance is benign. Active damping or equivalent passive damping should be represented in the controller design context before increasing current-loop bandwidth."
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "title": "Common Topology Constraints",
+  "topic": "constraints",
+  "power_stage_family": "generic_power_converter",
+  "tags": ["constraints", "sensing", "operating_mode"],
+  "source_type": "constraint_rule",
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Sensing availability",
+      "text": "Do not recommend current-mode or cascaded control unless current sensing is either available or explicitly added to the design assumptions."
+    },
+    {
+      "heading": "Operating region",
+      "text": "Record whether the intended operating region includes CCM, DCM, weak-grid operation, or bidirectional flow because those conditions change which controller families remain robust."
+    }
+  ]
+}

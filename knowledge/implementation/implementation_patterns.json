@@ -1,0 +1,18 @@
+{
+  "title": "Common Implementation Patterns",
+  "topic": "implementation",
+  "power_stage_family": "generic_power_converter",
+  "tags": ["implementation", "anti_windup", "startup"],
+  "source_type": "implementation_rule",
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Anti-windup",
+      "text": "Whenever modulation saturation is possible, include anti-windup behavior explicitly in the controller design rather than assuming the PI structure alone is sufficient."
+    },
+    {
+      "heading": "Startup handling",
+      "text": "Treat startup and precharge as part of control implementation. Soft-start ramps and active current limits should be separate choices, not hidden side effects."
+    }
+  ]
+}

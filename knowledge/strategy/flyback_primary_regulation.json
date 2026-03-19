@@ -1,0 +1,25 @@
+{
+  "title": "Flyback Converter Primary-Side Strategy",
+  "topic": "strategy",
+  "topology": "flyback",
+  "architecture": "current_mode",
+  "power_stage_family": "dc_dc_isolated",
+  "control_objective": "voltage_regulation",
+  "operating_mode": "standalone",
+  "plant_features": ["magnetizing_current", "ccm_dcm_transition"],
+  "tags": ["flyback", "isolation", "current_loop"],
+  "source_type": "controller_pattern",
+  "source_refs": ["ti_current_mode_control_handbook"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "When to use",
+      "text": "For flyback converters, start with current-mode control because it simplifies compensation and handles transformer magnetizing current more robustly than a pure voltage-mode approach."
+    },
+    {
+      "heading": "Constraint",
+      "topic": "constraints",
+      "text": "If the design spans CCM and DCM, document the intended operating region clearly because the small-signal behavior and compensation margin can change substantially."
+    }
+  ]
+}

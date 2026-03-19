@@ -159,6 +159,11 @@ class ControlStrategyAgent:
             query,
             topic='strategy',
             topology=topology.topology,
+            power_stage_family=_power_stage_family(topology.topology),
+            control_objective=_control_objective(req, topology.topology),
+            operating_mode=_operating_mode(req),
+            revision_trigger=_revision_trigger(previous_evaluation),
+            plant_features=_plant_features(req, topology.topology),
             tags=_strategy_tags(req, previous_evaluation),
             top_k=3,
         )
@@ -190,3 +195,61 @@ def _strategy_tags(req: RequirementSpec, previous_evaluation: EvaluationResult |
     if previous_evaluation and not previous_evaluation.passed:
         tags.append('revision')
     return tags
+
+
+def _power_stage_family(topology: str) -> str:
+    mapping = {
+        'buck': 'dc_dc_nonisolated',
+        'boost': 'dc_dc_nonisolated',
+        'buck_boost': 'dc_dc_nonisolated',
+        'inverter_3ph': 'dc_ac_inverter',
+        'inverter_1ph': 'dc_ac_inverter',
+        'pfc': 'ac_dc_rectifier',
+    }
+    return mapping.get(topology.strip().lower(), '')
+
+
+def _control_objective(req: RequirementSpec, topology: str) -> str:
+    top = topology.strip().lower()
+    if top == 'pfc':
+        return 'power_factor_correction'
+    if 'inverter' in top:
+        return 'grid_forming' if req.weak_grid_mode else 'grid_following'
+    return 'voltage_regulation'
+
+
+def _operating_mode(req: RequirementSpec) -> str:
+    if req.weak_grid_mode:
+        return 'weak_grid'
+    if req.grid_connected:
+        return 'grid_connected'
+    return 'standalone'
+
+
+def _plant_features(req: RequirementSpec, topology: str) -> list[str]:
+    features: list[str] = []
+    top = topology.strip().lower()
+    if req.weak_grid_mode:
+        features.append('weak_grid')
+    if req.grid_connected and 'inverter' in top:
+        features.append('grid_synchronization')
+    if req.load_step_pct is not None:
+        features.append('load_transient')
+    if top == 'pfc':
+        features.append('line_frequency_envelope')
+    return features
+
+
+def _revision_trigger(previous_evaluation: EvaluationResult | None) -> str:
+    if previous_evaluation is None or previous_evaluation.passed:
+        return ''
+    violations = ' '.join(previous_evaluation.violations).lower()
+    if 'overshoot' in violations:
+        return 'overshoot'
+    if 'settling' in violations:
+        return 'slow_settling'
+    if 'ripple' in violations:
+        return 'excess_ripple'
+    if 'efficiency' in violations:
+        return 'efficiency_shortfall'
+    return 'failed_revision'

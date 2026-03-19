@@ -25,6 +25,12 @@ class LocalKnowledgeBase:
         topic: str = '',
         topology: str = '',
         architecture: str = '',
+        power_stage_family: str = '',
+        control_objective: str = '',
+        operating_mode: str = '',
+        revision_trigger: str = '',
+        plant_features: list[str] | None = None,
+        source_refs: list[str] | None = None,
         tags: list[str] | None = None,
         top_k: int = 3,
     ) -> RetrievedContext:
@@ -33,6 +39,8 @@ class LocalKnowledgeBase:
 
         chunks = self._load_chunks()
         tag_set = {tag.strip().lower() for tag in (tags or []) if tag.strip()}
+        feature_set = {feature.strip().lower() for feature in (plant_features or []) if feature.strip()}
+        source_ref_set = {ref.strip().lower() for ref in (source_refs or []) if ref.strip()}
         scored: list[tuple[float, KnowledgeChunk]] = []
         for chunk in chunks:
             score = _score_chunk(
@@ -41,6 +49,12 @@ class LocalKnowledgeBase:
                 topic=topic,
                 topology=topology,
                 architecture=architecture,
+                power_stage_family=power_stage_family,
+                control_objective=control_objective,
+                operating_mode=operating_mode,
+                revision_trigger=revision_trigger,
+                plant_features=feature_set,
+                source_refs=source_ref_set,
                 tags=tag_set,
             )
             if score > 0:
@@ -65,6 +79,12 @@ def _score_chunk(
     topic: str,
     topology: str,
     architecture: str,
+    power_stage_family: str,
+    control_objective: str,
+    operating_mode: str,
+    revision_trigger: str,
+    plant_features: set[str],
+    source_refs: set[str],
     tags: set[str],
 ) -> float:
     query_tokens = _tokenize(query)
@@ -78,6 +98,13 @@ def _score_chunk(
         chunk.topic,
         chunk.topology,
         chunk.architecture,
+        chunk.power_stage_family,
+        chunk.modulation,
+        chunk.control_objective,
+        chunk.operating_mode,
+        chunk.revision_trigger,
+        ' '.join(chunk.plant_features),
+        ' '.join(chunk.source_refs),
         ' '.join(chunk.tags),
     ]))
     counts = Counter(chunk_tokens)
@@ -91,6 +118,20 @@ def _score_chunk(
         score += 5.0
     if architecture and chunk.architecture == architecture.strip().lower():
         score += 5.0
+    if power_stage_family and chunk.power_stage_family == power_stage_family.strip().lower():
+        score += 4.0
+    if control_objective and chunk.control_objective == control_objective.strip().lower():
+        score += 4.0
+    if operating_mode and chunk.operating_mode == operating_mode.strip().lower():
+        score += 3.0
+    if revision_trigger and chunk.revision_trigger == revision_trigger.strip().lower():
+        score += 4.0
+    for feature in plant_features:
+        if feature in chunk.plant_features:
+            score += 2.5
+    for source_ref in source_refs:
+        if source_ref in chunk.source_refs:
+            score += 1.5
     for tag in tags:
         if tag in chunk.tags:
             score += 2.0

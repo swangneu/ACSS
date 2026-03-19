@@ -1,0 +1,25 @@
+{
+  "title": "Boost Converter Average Current Mode Strategy",
+  "topic": "strategy",
+  "topology": "boost",
+  "architecture": "cascaded",
+  "power_stage_family": "dc_dc_nonisolated",
+  "control_objective": "voltage_regulation",
+  "operating_mode": "standalone",
+  "plant_features": ["right_half_plane_zero", "load_transient"],
+  "tags": ["boost", "current_loop", "revision"],
+  "source_type": "controller_pattern",
+  "source_refs": ["erickson_maksimovic_2001"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "When to use",
+      "text": "Use an inner current loop with a slower outer voltage loop for boost converters when transient performance must improve without pushing the voltage loop near the right-half-plane-zero limit."
+    },
+    {
+      "heading": "Escalation trigger",
+      "revision_trigger": "slow_settling",
+      "text": "If a plain voltage loop becomes sluggish or overshoots as gains rise, move to average-current-mode control instead of trying to force a high-bandwidth single loop."
+    }
+  ]
+}

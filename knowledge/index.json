@@ -1,5 +1,57 @@
 [
   {
+    "chunk_id": "topology_constraints:0",
+    "source_path": "constraints\\topology_constraints.json",
+    "title": "Common Topology Constraints",
+    "section": "Sensing availability",
+    "text": "Do not recommend current-mode or cascaded control unless current sensing is either available or explicitly added to the design assumptions.",
+    "topic": "constraints",
+    "topology": "",
+    "architecture": "",
+    "power_stage_family": "generic_power_converter",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [],
+    "confidence": "medium",
+    "tags": [
+      "constraints",
+      "sensing",
+      "operating_mode"
+    ],
+    "metadata": {
+      "source_type": "constraint_rule"
+    }
+  },
+  {
+    "chunk_id": "topology_constraints:1",
+    "source_path": "constraints\\topology_constraints.json",
+    "title": "Common Topology Constraints",
+    "section": "Operating region",
+    "text": "Record whether the intended operating region includes CCM, DCM, weak-grid operation, or bidirectional flow because those conditions change which controller families remain robust.",
+    "topic": "constraints",
+    "topology": "",
+    "architecture": "",
+    "power_stage_family": "generic_power_converter",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [],
+    "confidence": "medium",
+    "tags": [
+      "constraints",
+      "sensing",
+      "operating_mode"
+    ],
+    "metadata": {
+      "source_type": "constraint_rule"
+    }
+  },
+  {
     "chunk_id": "buck_cascaded:0",
     "source_path": "controllers\\buck_cascaded.json",
     "title": "Buck Cascaded Control Notes",
@@ -8,6 +60,14 @@
     "topic": "strategy",
     "topology": "buck",
     "architecture": "cascaded",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [],
+    "confidence": "",
     "tags": [
       "buck",
       "current_loop",
@@ -27,6 +87,14 @@
     "topic": "strategy",
     "topology": "buck",
     "architecture": "cascaded",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [],
+    "confidence": "",
     "tags": [
       "buck",
       "current_loop",
@@ -46,6 +114,14 @@
     "topic": "strategy",
     "topology": "buck",
     "architecture": "pi",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [],
+    "confidence": "",
     "tags": [
       "buck",
       "voltage_loop",
@@ -64,6 +140,14 @@
     "topic": "strategy",
     "topology": "buck",
     "architecture": "pi",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [],
+    "confidence": "",
     "tags": [
       "buck",
       "voltage_loop",
@@ -82,6 +166,14 @@
     "topic": "strategy",
     "topology": "inverter_3ph",
     "architecture": "dq",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [],
+    "confidence": "",
     "tags": [
       "grid_connected",
       "inrush",
@@ -100,6 +192,14 @@
     "topic": "strategy",
     "topology": "inverter_3ph",
     "architecture": "dq",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [],
+    "confidence": "",
     "tags": [
       "grid_connected",
       "inrush",
@@ -118,6 +218,14 @@
     "topic": "strategy",
     "topology": "inverter_3ph",
     "architecture": "vsg",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [],
+    "confidence": "",
     "tags": [
       "weak_grid",
       "grid_connected"
@@ -135,6 +243,14 @@
     "topic": "strategy",
     "topology": "inverter_3ph",
     "architecture": "vsg",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [],
+    "confidence": "",
     "tags": [
       "weak_grid",
       "grid_connected"
@@ -152,6 +268,14 @@
     "topic": "strategy",
     "topology": "pfc",
     "architecture": "pfc_current_mode",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [],
+    "confidence": "",
     "tags": [
       "pfc",
       "current_loop",
@@ -159,6 +283,710 @@
     ],
     "metadata": {
       "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "implementation_patterns:0",
+    "source_path": "implementation\\implementation_patterns.json",
+    "title": "Common Implementation Patterns",
+    "section": "Anti-windup",
+    "text": "Whenever modulation saturation is possible, include anti-windup behavior explicitly in the controller design rather than assuming the PI structure alone is sufficient.",
+    "topic": "implementation",
+    "topology": "",
+    "architecture": "",
+    "power_stage_family": "generic_power_converter",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [],
+    "confidence": "medium",
+    "tags": [
+      "implementation",
+      "anti_windup",
+      "startup"
+    ],
+    "metadata": {
+      "source_type": "implementation_rule"
+    }
+  },
+  {
+    "chunk_id": "implementation_patterns:1",
+    "source_path": "implementation\\implementation_patterns.json",
+    "title": "Common Implementation Patterns",
+    "section": "Startup handling",
+    "text": "Treat startup and precharge as part of control implementation. Soft-start ramps and active current limits should be separate choices, not hidden side effects.",
+    "topic": "implementation",
+    "topology": "",
+    "architecture": "",
+    "power_stage_family": "generic_power_converter",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [],
+    "confidence": "medium",
+    "tags": [
+      "implementation",
+      "anti_windup",
+      "startup"
+    ],
+    "metadata": {
+      "source_type": "implementation_rule"
+    }
+  },
+  {
+    "chunk_id": "revision_patterns:0",
+    "source_path": "revision\\revision_patterns.json",
+    "title": "Cross-Topology Revision Patterns",
+    "section": "Overshoot response",
+    "text": "When overshoot remains high after reasonable gain reduction, prefer adding an inner current loop, feedforward, or saturation management before forcing more integral action.",
+    "topic": "revision",
+    "topology": "",
+    "architecture": "",
+    "power_stage_family": "generic_power_converter",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "overshoot",
+    "source_refs": [],
+    "confidence": "medium",
+    "tags": [
+      "revision",
+      "overshoot",
+      "settling",
+      "ripple"
+    ],
+    "metadata": {
+      "source_type": "revision_rule"
+    }
+  },
+  {
+    "chunk_id": "revision_patterns:1",
+    "source_path": "revision\\revision_patterns.json",
+    "title": "Cross-Topology Revision Patterns",
+    "section": "Slow settling response",
+    "text": "When settling time repeatedly fails, first check whether the control structure is too simple for the plant. A loop-structure change is often better than uniformly increasing gains.",
+    "topic": "revision",
+    "topology": "",
+    "architecture": "",
+    "power_stage_family": "generic_power_converter",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "slow_settling",
+    "source_refs": [],
+    "confidence": "medium",
+    "tags": [
+      "revision",
+      "overshoot",
+      "settling",
+      "ripple"
+    ],
+    "metadata": {
+      "source_type": "revision_rule"
+    }
+  },
+  {
+    "chunk_id": "revision_patterns:2",
+    "source_path": "revision\\revision_patterns.json",
+    "title": "Cross-Topology Revision Patterns",
+    "section": "Ripple response",
+    "text": "When ripple violations persist, examine passive sizing and switching ripple paths first; controller gain changes alone rarely remove steady ripple limitations.",
+    "topic": "revision",
+    "topology": "",
+    "architecture": "",
+    "power_stage_family": "generic_power_converter",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "excess_ripple",
+    "source_refs": [],
+    "confidence": "medium",
+    "tags": [
+      "revision",
+      "overshoot",
+      "settling",
+      "ripple"
+    ],
+    "metadata": {
+      "source_type": "revision_rule"
+    }
+  },
+  {
+    "chunk_id": "erickson_maksimovic_2001:0",
+    "source_path": "sources\\erickson_maksimovic_2001.json",
+    "title": "Erickson and Maksimovic Fundamentals Source Metadata",
+    "section": "Linked claims",
+    "text": "Boost converter voltage-loop bandwidth should respect the right-half-plane-zero limitation, which motivates cascaded or current-mode structures for stronger transient performance.",
+    "topic": "source_notes",
+    "topology": "",
+    "architecture": "",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [
+      "erickson_maksimovic_2001"
+    ],
+    "confidence": "",
+    "tags": [],
+    "metadata": {
+      "source_type": "paper_source",
+      "source_id": "erickson_maksimovic_2001",
+      "year": 2001,
+      "venue": "Textbook",
+      "authors": [
+        "Robert W. Erickson",
+        "Dragan Maksimovic"
+      ],
+      "claim_id": "boost_rhpz_limit",
+      "claim_type": "design_rule",
+      "evidence_strength": "high",
+      "file_path": "papers/erickson_maksimovic_fundamentals_of_power_electronics.pdf"
+    }
+  },
+  {
+    "chunk_id": "mohan_undeland_robbins_2003:0",
+    "source_path": "sources\\mohan_undeland_robbins_2003.json",
+    "title": "Mohan Undeland Robbins Source Metadata",
+    "section": "Linked claims",
+    "text": "Wide-range converters and bidirectional stages benefit from explicit current regulation because the actuator direction and duty-ratio sensitivity vary strongly over the operating envelope.",
+    "topic": "source_notes",
+    "topology": "",
+    "architecture": "",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [
+      "mohan_undeland_robbins_2003"
+    ],
+    "confidence": "",
+    "tags": [],
+    "metadata": {
+      "source_type": "paper_source",
+      "source_id": "mohan_undeland_robbins_2003",
+      "year": 2003,
+      "venue": "Textbook",
+      "authors": [
+        "Ned Mohan",
+        "Tore M. Undeland",
+        "William P. Robbins"
+      ],
+      "claim_id": "buck_boost_wide_range",
+      "claim_type": "design_rule",
+      "evidence_strength": "medium",
+      "file_path": "papers/power_electronics_converters_applications_and_design.pdf"
+    }
+  },
+  {
+    "chunk_id": "teodorescu_grid_converters_2011:0",
+    "source_path": "sources\\teodorescu_grid_converters_2011.json",
+    "title": "Teodorescu Grid Converters Source Metadata",
+    "section": "Linked claims",
+    "text": "LCL-filtered grid converters require explicit damping considerations in control design, especially when digital delay is not negligible.",
+    "topic": "source_notes",
+    "topology": "",
+    "architecture": "",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [
+      "teodorescu_grid_converters_2011"
+    ],
+    "confidence": "",
+    "tags": [],
+    "metadata": {
+      "source_type": "paper_source",
+      "source_id": "teodorescu_grid_converters_2011",
+      "year": 2011,
+      "venue": "Book",
+      "authors": [
+        "Remus Teodorescu",
+        "Marco Liserre",
+        "Pedro Rodriguez"
+      ],
+      "claim_id": "lcl_damping_requirement",
+      "claim_type": "design_rule",
+      "evidence_strength": "high",
+      "file_path": "papers/grid_converters_for_photovoltaic_and_wind_power_systems.pdf"
+    }
+  },
+  {
+    "chunk_id": "ti_current_mode_control_handbook:0",
+    "source_path": "sources\\ti_current_mode_control_handbook.json",
+    "title": "TI Current Mode Control Source Metadata",
+    "section": "Linked claims",
+    "text": "Current-mode control reduces compensation burden for flyback-style stages and is usually the more practical starting point than voltage mode.",
+    "topic": "source_notes",
+    "topology": "",
+    "architecture": "",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [
+      "ti_current_mode_control_handbook"
+    ],
+    "confidence": "",
+    "tags": [],
+    "metadata": {
+      "source_type": "paper_source",
+      "source_id": "ti_current_mode_control_handbook",
+      "year": 1999,
+      "venue": "Application Note",
+      "authors": [
+        "Texas Instruments"
+      ],
+      "claim_id": "flyback_current_mode",
+      "claim_type": "design_rule",
+      "evidence_strength": "medium",
+      "file_path": "papers/ti_current_mode_control_handbook.pdf"
+    }
+  },
+  {
+    "chunk_id": "bidirectional_dcdc_dual_loop:0",
+    "source_path": "strategy\\bidirectional_dcdc_dual_loop.json",
+    "title": "Bidirectional DC-DC Converter Dual-Loop Strategy",
+    "section": "Recommended structure",
+    "text": "For bidirectional DC-DC stages, use a current-regulating inner loop with supervisory voltage or power command generation so charging and discharging share one bounded actuator.",
+    "topic": "strategy",
+    "topology": "bidirectional_dcdc",
+    "architecture": "dual_loop",
+    "power_stage_family": "dc_dc_bidirectional",
+    "modulation": "",
+    "control_objective": "power_flow_regulation",
+    "operating_mode": "bidirectional",
+    "plant_features": [
+      "sign_reversal",
+      "current_limit"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "mohan_undeland_robbins_2003"
+    ],
+    "confidence": "medium",
+    "tags": [
+      "bidirectional",
+      "battery_interface",
+      "current_loop"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "bidirectional_dcdc_dual_loop:1",
+    "source_path": "strategy\\bidirectional_dcdc_dual_loop.json",
+    "title": "Bidirectional DC-DC Converter Dual-Loop Strategy",
+    "section": "Safety note",
+    "text": "The control layer should carry current and direction limits explicitly because sign reversal during mode changes is a primary source of transient stress.",
+    "topic": "strategy",
+    "topology": "bidirectional_dcdc",
+    "architecture": "dual_loop",
+    "power_stage_family": "dc_dc_bidirectional",
+    "modulation": "",
+    "control_objective": "power_flow_regulation",
+    "operating_mode": "bidirectional",
+    "plant_features": [
+      "sign_reversal",
+      "current_limit"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "mohan_undeland_robbins_2003"
+    ],
+    "confidence": "medium",
+    "tags": [
+      "bidirectional",
+      "battery_interface",
+      "current_loop"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "boost_average_current_mode:0",
+    "source_path": "strategy\\boost_average_current_mode.json",
+    "title": "Boost Converter Average Current Mode Strategy",
+    "section": "When to use",
+    "text": "Use an inner current loop with a slower outer voltage loop for boost converters when transient performance must improve without pushing the voltage loop near the right-half-plane-zero limit.",
+    "topic": "strategy",
+    "topology": "boost",
+    "architecture": "cascaded",
+    "power_stage_family": "dc_dc_nonisolated",
+    "modulation": "",
+    "control_objective": "voltage_regulation",
+    "operating_mode": "standalone",
+    "plant_features": [
+      "right_half_plane_zero",
+      "load_transient"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "erickson_maksimovic_2001"
+    ],
+    "confidence": "high",
+    "tags": [
+      "boost",
+      "current_loop",
+      "revision"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "boost_average_current_mode:1",
+    "source_path": "strategy\\boost_average_current_mode.json",
+    "title": "Boost Converter Average Current Mode Strategy",
+    "section": "Escalation trigger",
+    "text": "If a plain voltage loop becomes sluggish or overshoots as gains rise, move to average-current-mode control instead of trying to force a high-bandwidth single loop.",
+    "topic": "strategy",
+    "topology": "boost",
+    "architecture": "cascaded",
+    "power_stage_family": "dc_dc_nonisolated",
+    "modulation": "",
+    "control_objective": "voltage_regulation",
+    "operating_mode": "standalone",
+    "plant_features": [
+      "right_half_plane_zero",
+      "load_transient"
+    ],
+    "revision_trigger": "slow_settling",
+    "source_refs": [
+      "erickson_maksimovic_2001"
+    ],
+    "confidence": "high",
+    "tags": [
+      "boost",
+      "current_loop",
+      "revision"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "buck_boost_generalized_strategy:0",
+    "source_path": "strategy\\buck_boost_generalized_strategy.json",
+    "title": "Buck-Boost Converter Generalized Strategy",
+    "section": "Default structure",
+    "text": "For buck-boost stages operating over a wide conversion ratio, prefer a cascaded current-inner and voltage-outer structure so duty-ratio nonlinearity is handled by a faster inner actuator.",
+    "topic": "strategy",
+    "topology": "buck_boost",
+    "architecture": "cascaded",
+    "power_stage_family": "dc_dc_nonisolated",
+    "modulation": "",
+    "control_objective": "voltage_regulation",
+    "operating_mode": "standalone",
+    "plant_features": [
+      "duty_cycle_nonlinearity",
+      "load_transient"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "mohan_undeland_robbins_2003"
+    ],
+    "confidence": "medium",
+    "tags": [
+      "buck_boost",
+      "current_loop",
+      "wide_range"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "buck_boost_generalized_strategy:1",
+    "source_path": "strategy\\buck_boost_generalized_strategy.json",
+    "title": "Buck-Boost Converter Generalized Strategy",
+    "section": "Practical note",
+    "text": "Keep current sensing explicit in the design because a voltage-only loop usually becomes fragile once the operating point spans both buck-like and boost-like regions.",
+    "topic": "strategy",
+    "topology": "buck_boost",
+    "architecture": "cascaded",
+    "power_stage_family": "dc_dc_nonisolated",
+    "modulation": "",
+    "control_objective": "voltage_regulation",
+    "operating_mode": "standalone",
+    "plant_features": [
+      "duty_cycle_nonlinearity",
+      "load_transient"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "mohan_undeland_robbins_2003"
+    ],
+    "confidence": "medium",
+    "tags": [
+      "buck_boost",
+      "current_loop",
+      "wide_range"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "flyback_primary_regulation:0",
+    "source_path": "strategy\\flyback_primary_regulation.json",
+    "title": "Flyback Converter Primary-Side Strategy",
+    "section": "When to use",
+    "text": "For flyback converters, start with current-mode control because it simplifies compensation and handles transformer magnetizing current more robustly than a pure voltage-mode approach.",
+    "topic": "strategy",
+    "topology": "flyback",
+    "architecture": "current_mode",
+    "power_stage_family": "dc_dc_isolated",
+    "modulation": "",
+    "control_objective": "voltage_regulation",
+    "operating_mode": "standalone",
+    "plant_features": [
+      "magnetizing_current",
+      "ccm_dcm_transition"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "ti_current_mode_control_handbook"
+    ],
+    "confidence": "medium",
+    "tags": [
+      "flyback",
+      "isolation",
+      "current_loop"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "flyback_primary_regulation:1",
+    "source_path": "strategy\\flyback_primary_regulation.json",
+    "title": "Flyback Converter Primary-Side Strategy",
+    "section": "Constraint",
+    "text": "If the design spans CCM and DCM, document the intended operating region clearly because the small-signal behavior and compensation margin can change substantially.",
+    "topic": "strategy",
+    "topology": "flyback",
+    "architecture": "current_mode",
+    "power_stage_family": "dc_dc_isolated",
+    "modulation": "",
+    "control_objective": "voltage_regulation",
+    "operating_mode": "standalone",
+    "plant_features": [
+      "magnetizing_current",
+      "ccm_dcm_transition"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "ti_current_mode_control_handbook"
+    ],
+    "confidence": "medium",
+    "tags": [
+      "flyback",
+      "isolation",
+      "current_loop"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "inverter_1ph_pr:0",
+    "source_path": "strategy\\inverter_1ph_pr.json",
+    "title": "Single-Phase Inverter PR Strategy",
+    "section": "Recommended structure",
+    "text": "For single-phase inverter sinusoidal output regulation, a proportional-resonant controller is a practical default because it tracks the fundamental in stationary frame without dq transformation.",
+    "topic": "strategy",
+    "topology": "inverter_1ph",
+    "architecture": "pr",
+    "power_stage_family": "dc_ac_inverter",
+    "modulation": "",
+    "control_objective": "voltage_regulation",
+    "operating_mode": "standalone",
+    "plant_features": [
+      "sinusoidal_tracking"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "teodorescu_grid_converters_2011"
+    ],
+    "confidence": "medium",
+    "tags": [
+      "single_phase",
+      "inverter",
+      "ac_output"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "inverter_1ph_pr:1",
+    "source_path": "strategy\\inverter_1ph_pr.json",
+    "title": "Single-Phase Inverter PR Strategy",
+    "section": "Implementation note",
+    "text": "Add explicit output-voltage feedback filtering and saturation-aware anti-windup so resonant gain does not amplify startup or load-step distortion.",
+    "topic": "strategy",
+    "topology": "inverter_1ph",
+    "architecture": "pr",
+    "power_stage_family": "dc_ac_inverter",
+    "modulation": "",
+    "control_objective": "voltage_regulation",
+    "operating_mode": "standalone",
+    "plant_features": [
+      "sinusoidal_tracking"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "teodorescu_grid_converters_2011"
+    ],
+    "confidence": "medium",
+    "tags": [
+      "single_phase",
+      "inverter",
+      "ac_output"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "inverter_3ph_lcl_grid_following:0",
+    "source_path": "strategy\\inverter_3ph_lcl_grid_following.json",
+    "title": "Three-Phase LCL Grid-Tied Inverter Strategy",
+    "section": "Default approach",
+    "text": "For a three-phase grid-tied inverter with an LCL filter, use dq current regulation with PLL-based synchronization and treat resonance damping as a first-class design requirement.",
+    "topic": "strategy",
+    "topology": "inverter_3ph",
+    "architecture": "dq",
+    "power_stage_family": "dc_ac_inverter",
+    "modulation": "",
+    "control_objective": "grid_following",
+    "operating_mode": "grid_connected",
+    "plant_features": [
+      "lcl_filter",
+      "grid_synchronization"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "teodorescu_grid_converters_2011"
+    ],
+    "confidence": "high",
+    "tags": [
+      "grid_connected",
+      "lcl",
+      "current_loop"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "inverter_3ph_lcl_grid_following:1",
+    "source_path": "strategy\\inverter_3ph_lcl_grid_following.json",
+    "title": "Three-Phase LCL Grid-Tied Inverter Strategy",
+    "section": "Constraint",
+    "text": "Do not assume the LCL resonance is benign. Active damping or equivalent passive damping should be represented in the controller design context before increasing current-loop bandwidth.",
+    "topic": "strategy",
+    "topology": "inverter_3ph",
+    "architecture": "dq",
+    "power_stage_family": "dc_ac_inverter",
+    "modulation": "",
+    "control_objective": "grid_following",
+    "operating_mode": "grid_connected",
+    "plant_features": [
+      "lcl_filter",
+      "grid_synchronization"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "teodorescu_grid_converters_2011"
+    ],
+    "confidence": "high",
+    "tags": [
+      "grid_connected",
+      "lcl",
+      "current_loop"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "boost_average_current_mode_tuning:0",
+    "source_path": "tuning\\boost_average_current_mode_tuning.json",
+    "title": "Boost Average Current Mode Tuning Rules",
+    "section": "Bandwidth ordering",
+    "text": "Tune the inner current loop first and keep the outer voltage loop well below the right-half-plane-zero frequency so the voltage regulator does not fight the boost power-stage limitation.",
+    "topic": "tuning",
+    "topology": "boost",
+    "architecture": "cascaded",
+    "power_stage_family": "dc_dc_nonisolated",
+    "modulation": "",
+    "control_objective": "voltage_regulation",
+    "operating_mode": "standalone",
+    "plant_features": [
+      "right_half_plane_zero"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "erickson_maksimovic_2001"
+    ],
+    "confidence": "high",
+    "tags": [
+      "boost",
+      "current_loop",
+      "sampling"
+    ],
+    "metadata": {
+      "source_type": "tuning_rule"
+    }
+  },
+  {
+    "chunk_id": "boost_average_current_mode_tuning:1",
+    "source_path": "tuning\\boost_average_current_mode_tuning.json",
+    "title": "Boost Average Current Mode Tuning Rules",
+    "section": "Gain direction",
+    "text": "If the response is too slow but stable, first improve current-loop tracking and only then increase outer voltage-loop aggressiveness.",
+    "topic": "tuning",
+    "topology": "boost",
+    "architecture": "cascaded",
+    "power_stage_family": "dc_dc_nonisolated",
+    "modulation": "",
+    "control_objective": "voltage_regulation",
+    "operating_mode": "standalone",
+    "plant_features": [
+      "right_half_plane_zero"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "erickson_maksimovic_2001"
+    ],
+    "confidence": "high",
+    "tags": [
+      "boost",
+      "current_loop",
+      "sampling"
+    ],
+    "metadata": {
+      "source_type": "tuning_rule"
     }
   },
   {
@@ -170,6 +998,14 @@
     "topic": "tuning",
     "topology": "buck",
     "architecture": "cascaded",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [],
+    "confidence": "",
     "tags": [
       "buck",
       "current_loop",
@@ -189,6 +1025,14 @@
     "topic": "tuning",
     "topology": "buck",
     "architecture": "cascaded",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [],
+    "confidence": "",
     "tags": [
       "buck",
       "current_loop",
@@ -208,6 +1052,14 @@
     "topic": "tuning",
     "topology": "buck",
     "architecture": "pi",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [],
+    "confidence": "",
     "tags": [
       "buck",
       "sampling",
@@ -226,6 +1078,14 @@
     "topic": "tuning",
     "topology": "buck",
     "architecture": "pi",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [],
+    "confidence": "",
     "tags": [
       "buck",
       "sampling",
@@ -244,9 +1104,79 @@
     "topic": "tuning",
     "topology": "inverter_3ph",
     "architecture": "dq",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [],
+    "confidence": "",
     "tags": [
       "grid_connected",
       "current_loop",
+      "sampling"
+    ],
+    "metadata": {
+      "source_type": "tuning_rule"
+    }
+  },
+  {
+    "chunk_id": "inverter_lcl_active_damping_tuning:0",
+    "source_path": "tuning\\inverter_lcl_active_damping_tuning.json",
+    "title": "LCL Inverter Active Damping Tuning Rules",
+    "section": "Loop ordering",
+    "text": "Establish damping or resonance attenuation before pushing current-loop crossover. Without that ordering, a faster dq controller can excite the LCL pole pair instead of improving tracking.",
+    "topic": "tuning",
+    "topology": "inverter_3ph",
+    "architecture": "dq",
+    "power_stage_family": "dc_ac_inverter",
+    "modulation": "",
+    "control_objective": "grid_following",
+    "operating_mode": "grid_connected",
+    "plant_features": [
+      "lcl_filter",
+      "grid_synchronization"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "teodorescu_grid_converters_2011"
+    ],
+    "confidence": "high",
+    "tags": [
+      "grid_connected",
+      "lcl",
+      "sampling"
+    ],
+    "metadata": {
+      "source_type": "tuning_rule"
+    }
+  },
+  {
+    "chunk_id": "inverter_lcl_active_damping_tuning:1",
+    "source_path": "tuning\\inverter_lcl_active_damping_tuning.json",
+    "title": "LCL Inverter Active Damping Tuning Rules",
+    "section": "Sampling note",
+    "text": "Keep sensing and PWM delay in mind because digital delay reduces the practical damping margin of LCL-filtered current control.",
+    "topic": "tuning",
+    "topology": "inverter_3ph",
+    "architecture": "dq",
+    "power_stage_family": "dc_ac_inverter",
+    "modulation": "",
+    "control_objective": "grid_following",
+    "operating_mode": "grid_connected",
+    "plant_features": [
+      "lcl_filter",
+      "grid_synchronization"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "teodorescu_grid_converters_2011"
+    ],
+    "confidence": "high",
+    "tags": [
+      "grid_connected",
+      "lcl",
       "sampling"
     ],
     "metadata": {
@@ -262,6 +1192,14 @@
     "topic": "tuning",
     "topology": "inverter_3ph",
     "architecture": "vsg",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [],
+    "confidence": "",
     "tags": [
       "weak_grid",
       "grid_connected"

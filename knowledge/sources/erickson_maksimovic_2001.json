@@ -1,0 +1,20 @@
+{
+  "title": "Erickson and Maksimovic Fundamentals Source Metadata",
+  "topic": "source_notes",
+  "source_type": "paper_source",
+  "source_id": "erickson_maksimovic_2001",
+  "authors": ["Robert W. Erickson", "Dragan Maksimovic"],
+  "year": 2001,
+  "venue": "Textbook",
+  "file_path": "papers/erickson_maksimovic_fundamentals_of_power_electronics.pdf",
+  "sections": [
+    {
+      "heading": "Linked claims",
+      "claim_id": "boost_rhpz_limit",
+      "claim_type": "design_rule",
+      "text": "Boost converter voltage-loop bandwidth should respect the right-half-plane-zero limitation, which motivates cascaded or current-mode structures for stronger transient performance.",
+      "source_refs": ["erickson_maksimovic_2001"],
+      "evidence_strength": "high"
+    }
+  ]
+}

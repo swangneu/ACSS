@@ -152,6 +152,10 @@ class ControlAgent:
             topic='tuning',
             topology=topology.topology,
             architecture=architecture,
+            power_stage_family=_power_stage_family(topology.topology),
+            control_objective=_control_objective(req, topology.topology, architecture),
+            operating_mode=_operating_mode(req),
+            plant_features=_plant_features(req, topology.topology, architecture),
             tags=_control_tags(req, strategy),
             top_k=3,
         )
@@ -177,3 +181,52 @@ def _normalize_inrush(value: str) -> str:
     if v not in {'none', 'active_current_limit', 'soft_start_ramp'}:
         return 'none'
     return v
+
+
+def _power_stage_family(topology: str) -> str:
+    mapping = {
+        'buck': 'dc_dc_nonisolated',
+        'boost': 'dc_dc_nonisolated',
+        'buck_boost': 'dc_dc_nonisolated',
+        'inverter_3ph': 'dc_ac_inverter',
+        'inverter_1ph': 'dc_ac_inverter',
+        'pfc': 'ac_dc_rectifier',
+    }
+    return mapping.get(topology.strip().lower(), '')
+
+
+def _control_objective(req: RequirementSpec, topology: str, architecture: str) -> str:
+    top = topology.strip().lower()
+    arch = architecture.strip().lower()
+    if top == 'pfc':
+        return 'power_factor_correction'
+    if 'inverter' in top:
+        if arch in {'vsg', 'voc', 'droop'} or req.weak_grid_mode:
+            return 'grid_forming'
+        return 'grid_following'
+    if arch == 'cascaded':
+        return 'voltage_regulation'
+    return 'voltage_regulation'
+
+
+def _operating_mode(req: RequirementSpec) -> str:
+    if req.weak_grid_mode:
+        return 'weak_grid'
+    if req.grid_connected:
+        return 'grid_connected'
+    return 'standalone'
+
+
+def _plant_features(req: RequirementSpec, topology: str, architecture: str) -> list[str]:
+    features: list[str] = []
+    top = topology.strip().lower()
+    arch = architecture.strip().lower()
+    if req.load_step_pct is not None:
+        features.append('load_transient')
+    if req.inrush_limit_a is not None:
+        features.append('startup_current_constraint')
+    if req.weak_grid_mode:
+        features.append('weak_grid')
+    if top == 'inverter_3ph' and arch == 'dq':
+        features.append('synchronous_frame')
+    return features

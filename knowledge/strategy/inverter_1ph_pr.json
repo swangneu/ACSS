@@ -1,0 +1,25 @@
+{
+  "title": "Single-Phase Inverter PR Strategy",
+  "topic": "strategy",
+  "topology": "inverter_1ph",
+  "architecture": "pr",
+  "power_stage_family": "dc_ac_inverter",
+  "control_objective": "voltage_regulation",
+  "operating_mode": "standalone",
+  "plant_features": ["sinusoidal_tracking"],
+  "tags": ["single_phase", "inverter", "ac_output"],
+  "source_type": "controller_pattern",
+  "source_refs": ["teodorescu_grid_converters_2011"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Recommended structure",
+      "text": "For single-phase inverter sinusoidal output regulation, a proportional-resonant controller is a practical default because it tracks the fundamental in stationary frame without dq transformation."
+    },
+    {
+      "heading": "Implementation note",
+      "topic": "implementation",
+      "text": "Add explicit output-voltage feedback filtering and saturation-aware anti-windup so resonant gain does not amplify startup or load-step distortion."
+    }
+  ]
+}

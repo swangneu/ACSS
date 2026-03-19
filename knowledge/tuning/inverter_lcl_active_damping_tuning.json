@@ -1,0 +1,24 @@
+{
+  "title": "LCL Inverter Active Damping Tuning Rules",
+  "topic": "tuning",
+  "topology": "inverter_3ph",
+  "architecture": "dq",
+  "power_stage_family": "dc_ac_inverter",
+  "control_objective": "grid_following",
+  "operating_mode": "grid_connected",
+  "plant_features": ["lcl_filter", "grid_synchronization"],
+  "tags": ["grid_connected", "lcl", "sampling"],
+  "source_type": "tuning_rule",
+  "source_refs": ["teodorescu_grid_converters_2011"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "Loop ordering",
+      "text": "Establish damping or resonance attenuation before pushing current-loop crossover. Without that ordering, a faster dq controller can excite the LCL pole pair instead of improving tracking."
+    },
+    {
+      "heading": "Sampling note",
+      "text": "Keep sensing and PWM delay in mind because digital delay reduces the practical damping margin of LCL-filtered current control."
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "title": "Cross-Topology Revision Patterns",
+  "topic": "revision",
+  "power_stage_family": "generic_power_converter",
+  "tags": ["revision", "overshoot", "settling", "ripple"],
+  "source_type": "revision_rule",
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Overshoot response",
+      "revision_trigger": "overshoot",
+      "text": "When overshoot remains high after reasonable gain reduction, prefer adding an inner current loop, feedforward, or saturation management before forcing more integral action."
+    },
+    {
+      "heading": "Slow settling response",
+      "revision_trigger": "slow_settling",
+      "text": "When settling time repeatedly fails, first check whether the control structure is too simple for the plant. A loop-structure change is often better than uniformly increasing gains."
+    },
+    {
+      "heading": "Ripple response",
+      "revision_trigger": "excess_ripple",
+      "text": "When ripple violations persist, examine passive sizing and switching ripple paths first; controller gain changes alone rarely remove steady ripple limitations."
+    }
+  ]
+}

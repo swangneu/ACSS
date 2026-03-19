@@ -14,6 +14,14 @@ class KnowledgeChunk:
     topic: str = ''
     topology: str = ''
     architecture: str = ''
+    power_stage_family: str = ''
+    modulation: str = ''
+    control_objective: str = ''
+    operating_mode: str = ''
+    plant_features: list[str] = field(default_factory=list)
+    revision_trigger: str = ''
+    source_refs: list[str] = field(default_factory=list)
+    confidence: str = ''
     tags: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
 

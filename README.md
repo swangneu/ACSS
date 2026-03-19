@@ -160,17 +160,31 @@ If `DEEPSEEK_API_KEY` is set, it can use DeepSeek for strategy selection:
 - Optional: `DEEPSEEK_BASE_URL` (default `https://api.deepseek.com`)
 
 ## Local controller-design knowledge base
-ACSS can now use a local retrieval layer for controller-design guidance.
+ACSS now uses a metadata-first local retrieval layer for controller-design guidance.
 
-- Knowledge lives under `knowledge/` as JSON documents with sectioned content.
+- Knowledge lives under `knowledge/` as structured JSON, not raw paper text.
 - A local index is built lazily into `knowledge/index.json`.
 - Retrieval is used by `ControlStrategyAgent` and `ControlAgent`.
 - Retrieved references are stored in strategy outputs and control design artifacts.
 
-This is intentionally stdlib-only in the current scaffold:
+Current knowledge folders:
+- `knowledge/controllers/` and `knowledge/strategy/` for control-family selection rules
+- `knowledge/tuning/` for loop-ordering and gain-direction rules
+- `knowledge/revision/` for failure-driven revision rules
+- `knowledge/constraints/` for sensing and operating-region constraints
+- `knowledge/implementation/` for practical implementation guidance
+- `knowledge/sources/` for paper/book/app-note metadata and linked claims
+
+This remains intentionally lightweight:
 - no external vector database
 - no embedding dependency
-- deterministic lexical retrieval plus topology/architecture/tag matching
+- deterministic lexical retrieval plus metadata matching
+
+Primary retrieval metadata now includes:
+- `topic`, `topology`, `architecture`
+- `power_stage_family`, `control_objective`, `operating_mode`
+- `plant_features`, `revision_trigger`, `tags`
+- `source_refs`, `confidence`
 
 Knowledge document shape:
 ```json
@@ -179,6 +193,12 @@ Knowledge document shape:
   "topic": "strategy",
   "topology": "buck",
   "architecture": "pi",
+  "power_stage_family": "dc_dc_nonisolated",
+  "control_objective": "voltage_regulation",
+  "operating_mode": "standalone",
+  "plant_features": ["load_transient"],
+  "source_refs": ["example_source_id"],
+  "confidence": "medium",
   "tags": ["load_step"],
   "sections": [
     {
@@ -188,6 +208,12 @@ Knowledge document shape:
   ]
 }
 ```
+
+Paper guidance:
+- Do not upload large PDF corpora directly into the main retriever.
+- Register papers under `knowledge/sources/`.
+- Distill reusable engineering claims from papers into compact JSON entries under the topic folders above.
+- Use raw PDFs as upstream evidence, not as the primary online retrieval format for ACSS decisions.
 
 ## Workflow diagram
 - Editable source: `images/workflows/acss_workflow.excalidraw`

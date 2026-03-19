@@ -1,0 +1,20 @@
+{
+  "title": "TI Current Mode Control Source Metadata",
+  "topic": "source_notes",
+  "source_type": "paper_source",
+  "source_id": "ti_current_mode_control_handbook",
+  "authors": ["Texas Instruments"],
+  "year": 1999,
+  "venue": "Application Note",
+  "file_path": "papers/ti_current_mode_control_handbook.pdf",
+  "sections": [
+    {
+      "heading": "Linked claims",
+      "claim_id": "flyback_current_mode",
+      "claim_type": "design_rule",
+      "text": "Current-mode control reduces compensation burden for flyback-style stages and is usually the more practical starting point than voltage mode.",
+      "source_refs": ["ti_current_mode_control_handbook"],
+      "evidence_strength": "medium"
+    }
+  ]
+}

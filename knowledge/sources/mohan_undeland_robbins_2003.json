@@ -1,0 +1,20 @@
+{
+  "title": "Mohan Undeland Robbins Source Metadata",
+  "topic": "source_notes",
+  "source_type": "paper_source",
+  "source_id": "mohan_undeland_robbins_2003",
+  "authors": ["Ned Mohan", "Tore M. Undeland", "William P. Robbins"],
+  "year": 2003,
+  "venue": "Textbook",
+  "file_path": "papers/power_electronics_converters_applications_and_design.pdf",
+  "sections": [
+    {
+      "heading": "Linked claims",
+      "claim_id": "buck_boost_wide_range",
+      "claim_type": "design_rule",
+      "text": "Wide-range converters and bidirectional stages benefit from explicit current regulation because the actuator direction and duty-ratio sensitivity vary strongly over the operating envelope.",
+      "source_refs": ["mohan_undeland_robbins_2003"],
+      "evidence_strength": "medium"
+    }
+  ]
+}
