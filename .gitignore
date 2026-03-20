@@ -4,6 +4,3 @@ runs/
 *.pyc
 src/llm/local_secrets.py
 papers/*
-!papers/.gitkeep
-!papers/*/
-!papers/*/.gitkeep
