@@ -90,6 +90,7 @@ class SimulationAgent:
         code_files = [str(params_m_path), str(sfunc_wrapper_path)]
 
         if use_matlab:
+            print(f'[simulation] MATLAB requested for {payload_path.name}; writing logs under {out_dir}', flush=True)
             maybe = run_matlab_stub(payload_path, out_dir, template_path)
             if maybe is not None:
                 maybe.waveform_image_files = _export_waveform_images(maybe.waveform_files, out_dir)
@@ -102,7 +103,9 @@ class SimulationAgent:
                         'unresolved_symbols': unresolved_symbols,
                     },
                 }
+                print(f'[simulation] MATLAB completed for {payload_path.name}', flush=True)
                 return maybe
+            print(f'[simulation] MATLAB unavailable or failed; falling back to synthetic for {payload_path.name}', flush=True)
 
         # Synthetic fallback for environments without MATLAB.
         ratio = req.vout_target_v / max(req.vin_nominal_v, 1e-9)
@@ -121,10 +124,14 @@ class SimulationAgent:
             'efficiency_pct': round(eff, 3),
         }
 
-        waveforms = {
-            'time_s': [i * 1e-4 for i in range(200)],
-            'vout_v': [req.vout_target_v * (1.0 - math.exp(-i / 35.0)) for i in range(200)],
-        }
+        time_s = [i * 1e-4 for i in range(200)]
+        if topology.topology == 'inverter_3ph':
+            waveforms = _build_inverter_waveforms(req, topology, control, time_s)
+        else:
+            waveforms = {
+                'time_s': time_s,
+                'vout_v': [req.vout_target_v * (1.0 - math.exp(-i / 35.0)) for i in range(200)],
+            }
         wf_path = out_dir / 'waveforms.json'
         dump_json(wf_path, waveforms)
         image_files = _export_waveform_images([str(wf_path)], out_dir)
@@ -204,6 +211,8 @@ def _render_wrapper_c(
     if arch in {'pi', 'cascaded'}:
         if 'vsg' in controller_name:
             arch = 'vsg'
+        elif 'voc_aho' in controller_name:
+            arch = 'voc_aho'
         elif 'voc' in controller_name:
             arch = 'voc'
         elif 'droop' in controller_name:
@@ -232,6 +241,21 @@ def _render_wrapper_c(
             "  if (theta > 2.0 * 3.14159265359) theta -= 2.0 * 3.14159265359;\n"
             "  const real_T err_v = vref - v_mag;\n"
             "  real_T mod = kp * err_v + ki * g_integrator_" + sfun_name + " + 0.05 * sin(theta);\n"
+        )
+    elif arch == 'voc_aho':
+        inverter_ctrl_law = (
+            "  /* AHO-based VOC-like oscillator control */\n"
+            "  static real_T x_aho = 1.0;\n"
+            "  static real_T y_aho = 0.0;\n"
+            "  const real_T w0 = 2.0 * 3.14159265359 * 50.0;\n"
+            "  const real_T mu = 0.8;\n"
+            "  const real_T r2 = x_aho * x_aho + y_aho * y_aho;\n"
+            "  const real_T amp_err = vref - v_mag;\n"
+            "  const real_T dx = mu * (1.0 - r2) * x_aho - w0 * y_aho + 1e-3 * kp * amp_err;\n"
+            "  const real_T dy = mu * (1.0 - r2) * y_aho + w0 * x_aho;\n"
+            "  x_aho += ts * dx;\n"
+            "  y_aho += ts * dy;\n"
+            "  real_T mod = kp * amp_err + ki * g_integrator_" + sfun_name + " + 0.08 * x_aho;\n"
         )
     elif arch == 'vsg':
         inverter_ctrl_law = (
@@ -449,7 +473,16 @@ def _export_waveform_images(waveform_files: list[str], out_dir: Path) -> list[st
         try:
             data = json.loads(wf_path.read_text(encoding='utf-8'))
             time_s = [float(x) for x in data.get('time_s', [])]
-            vout_v = [float(x) for x in data.get('vout_v', [])]
+            vout_raw = data.get('vout_v')
+            if isinstance(vout_raw, list):
+                vout_v = [float(x) for x in vout_raw]
+            elif all(key in data for key in ('va_v', 'vb_v', 'vc_v')):
+                va = [float(x) for x in data.get('va_v', [])]
+                vb = [float(x) for x in data.get('vb_v', [])]
+                vc = [float(x) for x in data.get('vc_v', [])]
+                vout_v = [math.sqrt((a * a + b * b + c * c) / 3.0) for a, b, c in zip(va, vb, vc)]
+            else:
+                vout_v = []
         except Exception:
             continue
         if len(time_s) < 2 or len(vout_v) < 2 or len(time_s) != len(vout_v):
@@ -536,3 +569,54 @@ def _render_waveform_svg(time_s: list[float], vout_v: list[float]) -> str:
             '</svg>',
         ]
     )
+
+
+def _build_inverter_waveforms(
+    req: RequirementSpec,
+    topology: TopologyDesign,
+    control: ControlDesign,
+    time_s: list[float],
+) -> dict[str, object]:
+    freq_hz = 50.0
+    v_peak = max(req.vout_target_v, 1.0)
+    i_peak = max(req.pout_w / max(3.0 * req.vout_target_v, 1.0), 1.0)
+    damping = 1.0 - min(0.4, control.kp)
+    inrush_scale = min(1.0, max(0.25, control.inrush_limit_a / max(i_peak * 1.5, 1.0))) if control.inrush_control != 'none' else 1.0
+
+    va: list[float] = []
+    vb: list[float] = []
+    vc: list[float] = []
+    ia: list[float] = []
+    ib: list[float] = []
+    ic: list[float] = []
+    vout_v: list[float] = []
+
+    for t in time_s:
+        env = 1.0 - math.exp(-t / 0.0045)
+        theta = 2.0 * math.pi * freq_hz * t
+        a = damping * env * v_peak * math.sin(theta)
+        b = damping * env * v_peak * math.sin(theta - 2.0 * math.pi / 3.0)
+        c = damping * env * v_peak * math.sin(theta + 2.0 * math.pi / 3.0)
+        ai = inrush_scale * env * i_peak * math.sin(theta - math.pi / 9.0)
+        bi = inrush_scale * env * i_peak * math.sin(theta - 2.0 * math.pi / 3.0 - math.pi / 9.0)
+        ci = inrush_scale * env * i_peak * math.sin(theta + 2.0 * math.pi / 3.0 - math.pi / 9.0)
+        va.append(a)
+        vb.append(b)
+        vc.append(c)
+        ia.append(ai)
+        ib.append(bi)
+        ic.append(ci)
+        vout_v.append(math.sqrt((a * a + b * b + c * c) / 3.0))
+
+    return {
+        'time_s': time_s,
+        'vout_v': vout_v,
+        'va_v': va,
+        'vb_v': vb,
+        'vc_v': vc,
+        'ia_a': ia,
+        'ib_a': ib,
+        'ic_a': ic,
+        'topology': topology.topology,
+        'architecture': control.architecture,
+    }

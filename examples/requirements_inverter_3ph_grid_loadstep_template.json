@@ -1,6 +1,6 @@
 {
-  "name": "inverter_3ph_grid_loadstep_template",
-  "design_prompt": "Design a grid-forming 3-phase inverter controller for weak-grid operation with load-step robustness, inrush limiting, and safe transient behavior.",
+  "name": "inverter_3ph_voc_aho_grid_loadstep_template",
+  "design_prompt": "Design a grid-forming 3-phase inverter controller using AHO-based VOC for weak-grid operation with load-step robustness, inrush limiting, and safe transient behavior.",
   "vin_nominal_v": 400.0,
   "vout_target_v": 100.0,
   "pout_w": 10000.0,
@@ -13,7 +13,7 @@
   "weak_grid_mode": true,
   "load_step_pct": 0.5,
   "inrush_limit_a": 35.0,
-  "control_design_notes": "Prioritize grid-forming stability. If simple PI fails, use VSG or VOC. Add active inrush limiting and inner current-loop protection during load steps and grid connection.",
+  "control_design_notes": "Prioritize AHO-based VOC grid-forming stability. Use AHO-based VOC instead of VSG when possible. Keep an inner dq current loop and active current limiting during load steps and grid connection.",
   "preferred_topology": "inverter_3ph",
   "max_iterations": 10
 }

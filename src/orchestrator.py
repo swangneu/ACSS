@@ -16,6 +16,7 @@ from src.agents.sensor_agent import SensorAgent
 from src.agents.simulation_agent import SimulationAgent
 from src.agents.topology_agent import TopologyAgent
 from src.agents.revising_agent import RevisingAgent
+from src.agents.visualization_agent import VisualizationAgent
 from src.contracts import EngineerReview, IterationRecord, dump_json, load_requirements, to_dict
 
 
@@ -40,6 +41,7 @@ class ACSSOrchestrator:
         self.control_agent = ControlAgent()
         self.model_builder = ModelBuilderAgent()
         self.simulation_agent = SimulationAgent()
+        self.visualization_agent = VisualizationAgent()
         self.evaluation_agent = EvaluationAgent()
         self.revising_agent = RevisingAgent()
 
@@ -53,24 +55,37 @@ class ACSSOrchestrator:
         stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         run_dir = self.out_root / f'{stamp}_{req.name}'
         run_dir.mkdir(parents=True, exist_ok=True)
+        progress = _ProgressReporter(req.max_iterations)
+        progress.start_run(req.name, run_dir, self.template_slx, self.use_matlab)
 
         records: list[IterationRecord] = []
 
+        progress.step('topology', 0, req.max_iterations, 'Selecting topology and initial passives')
         topology = self.topology_agent.design(req)
+        progress.done('topology', topology=topology.topology)
         topology = self._review_step(run_dir, 'topology', topology)
 
         for i in range(req.max_iterations):
             iter_dir = run_dir / f'iter_{i:02d}'
             iter_dir.mkdir(parents=True, exist_ok=True)
 
+            progress.step('sensors', i, req.max_iterations, 'Selecting sensor set')
             sensors = self.sensor_agent.design(req, topology)
+            progress.done('sensors', sensors=len(sensors.sensors))
             sensors = self._review_step(iter_dir, 'sensors', sensors)
             previous_eval = records[-1].evaluation if records else None
+            progress.step('strategy', i, req.max_iterations, 'Choosing control strategy')
             strategy = self.control_strategy_agent.choose(req, topology, i, previous_eval)
+            progress.done('strategy', architecture=str(strategy.get('architecture', '')))
             strategy = self._review_step(iter_dir, 'control_strategy', strategy)
+            progress.step('control', i, req.max_iterations, 'Synthesizing control parameters')
             control = self.control_agent.design(req, topology, iteration=i, strategy=strategy)
+            progress.done('control', kp=f'{control.kp:.4g}', ki=f'{control.ki:.4g}')
             control = self._review_step(iter_dir, 'control', control)
+            progress.step('payload', i, req.max_iterations, 'Building simulation payload')
             payload_path = self.model_builder.build_payload(req, topology, sensors, control, iter_dir)
+            progress.done('payload', file=payload_path.name)
+            progress.step('simulation', i, req.max_iterations, 'Running simulation')
             sim = self.simulation_agent.run(
                 req,
                 topology,
@@ -80,8 +95,14 @@ class ACSSOrchestrator:
                 self.use_matlab,
                 template_override=self.template_slx,
             )
+            progress.done('simulation', mode=str(sim.raw.get('mode', 'unknown')))
+            progress.step('visualization', i, req.max_iterations, 'Generating visualizations')
+            sim.visualization_files = self.visualization_agent.build(req, topology, control, sim, iter_dir)
+            progress.done('visualization', files=len(sim.visualization_files))
             sim = self._review_step(iter_dir, 'simulation', sim)
+            progress.step('evaluation', i, req.max_iterations, 'Evaluating metrics')
             eval_result = self.evaluation_agent.evaluate(req, sim)
+            progress.done('evaluation', passed=eval_result.passed, score=f'{eval_result.score:.2f}')
             eval_result = self._review_step(iter_dir, 'evaluation', eval_result)
             engineer_review = self._engineer_review_iteration(iter_dir, i, req, strategy, control, sim, eval_result)
             final_pass = self._is_iteration_accepted(eval_result, engineer_review)
@@ -112,8 +133,14 @@ class ACSSOrchestrator:
             })
 
             if final_pass:
+                progress.finish_iteration(i, accepted=True)
                 break
+            progress.finish_iteration(i, accepted=False)
+            if i >= req.max_iterations - 1:
+                break
+            progress.step('revision', i, req.max_iterations, 'Revising topology/control for next iteration')
             topology, control = self.revising_agent.revise(req, topology, control, eval_result, engineer_review, i)
+            progress.done('revision', next_topology=topology.topology, next_arch=control.architecture)
             topology = self._review_step(iter_dir, 'revised_topology', topology)
             control = self._review_step(iter_dir, 'revised_control', control)
 
@@ -152,6 +179,7 @@ class ACSSOrchestrator:
                 'waveform_evolution_files': evolution_artifacts,
             },
         )
+        progress.finish_run(records)
 
         return run_dir
 
@@ -437,3 +465,48 @@ def _render_evolution_svg(curves: list[dict[str, object]]) -> str:
             '</svg>',
         ]
     )
+
+
+class _ProgressReporter:
+    def __init__(self, max_iterations: int) -> None:
+        self.max_iterations = max_iterations
+
+    def start_run(self, name: str, run_dir: Path, template_slx: Path, use_matlab: bool) -> None:
+        mode = 'matlab' if use_matlab else 'synthetic'
+        print(f'[run] Starting ACSS for {name}')
+        print(f'[run] Output: {run_dir}')
+        print(f'[run] Template: {template_slx}')
+        print(f'[run] Validation mode: {mode}')
+
+    def step(self, step_name: str, iteration: int, total_iterations: int, message: str) -> None:
+        prefix = self._prefix(iteration, total_iterations)
+        print(f'{prefix} {step_name:<13} {self._bar(iteration, total_iterations)} {message}', flush=True)
+
+    def done(self, step_name: str, **fields: object) -> None:
+        if not fields:
+            print(f'           {step_name:<13} done', flush=True)
+            return
+        details = ', '.join(f'{key}={value}' for key, value in fields.items())
+        print(f'           {step_name:<13} done ({details})', flush=True)
+
+    def finish_iteration(self, iteration: int, accepted: bool) -> None:
+        status = 'accepted' if accepted else 'continuing'
+        print(f'[iter {iteration + 1}/{self.max_iterations}] status        {status}', flush=True)
+
+    def finish_run(self, records: list[IterationRecord]) -> None:
+        accepted = any(record.evaluation.passed for record in records)
+        total = len(records)
+        print(f'[run] Finished after {total} iteration(s). accepted={accepted}', flush=True)
+
+    def _prefix(self, iteration: int, total_iterations: int) -> str:
+        if total_iterations <= 0:
+            return '[iter --]'
+        current = min(iteration + 1, total_iterations)
+        return f'[iter {current}/{total_iterations}]'
+
+    def _bar(self, iteration: int, total_iterations: int) -> str:
+        total_slots = 10
+        if total_iterations <= 0:
+            return '[----------]'
+        filled = max(1, min(total_slots, math.ceil((iteration + 1) / total_iterations * total_slots)))
+        return '[' + '#' * filled + '-' * (total_slots - filled) + ']'

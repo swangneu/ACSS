@@ -50,6 +50,15 @@ class ControlStrategyAgent:
             }
 
         if topology.topology == 'inverter_3ph':
+            if 'aho' in notes and 'voc' in notes:
+                return {
+                    'controller': 'voc_aho_grid_forming',
+                    'architecture': 'voc_aho',
+                    'current_loop_enabled': True,
+                    'inrush_control': 'active_current_limit',
+                    'secondary_controller': 'dq_current_inner',
+                    'rationale': ['Requested AHO-based VOC preference'],
+                }
             if req.weak_grid_mode or 'vsg' in notes:
                 return {
                     'controller': 'vsg_grid_forming',

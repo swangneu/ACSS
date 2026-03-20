@@ -1,0 +1,28 @@
+{
+  "title": "Benchmarking Nonlinear Oscillators for Grid-Forming Inverter Control",
+  "topic": "source_notes",
+  "source_type": "paper_source",
+  "source_id": "benchmarking_nonlinear_oscillators_grid_forming",
+  "authors": [],
+  "year": 2023,
+  "venue": "Paper",
+  "file_path": "papers/voc/Benchmarking_Nonlinear_Oscillators_for_Grid-Fo.pdf",
+  "sections": [
+    {
+      "heading": "Linked claims",
+      "claim_id": "oscillator_state_dynamics",
+      "claim_type": "implementation_rule",
+      "text": "Nonlinear oscillator based grid-forming control should be described with explicit oscillator states, amplitude-limiting dynamics, and a clearly defined mapping from oscillator state to inverter voltage or modulation commands.",
+      "source_refs": ["benchmarking_nonlinear_oscillators_grid_forming"],
+      "evidence_strength": "medium"
+    },
+    {
+      "heading": "Current-limit interaction",
+      "claim_id": "current_limit_coordination",
+      "claim_type": "tuning_rule",
+      "text": "Oscillator-based grid-forming controllers need explicit coordination between oscillator dynamics and inner current limiting so transient stress is bounded during startup and load steps.",
+      "source_refs": ["benchmarking_nonlinear_oscillators_grid_forming"],
+      "evidence_strength": "medium"
+    }
+  ]
+}

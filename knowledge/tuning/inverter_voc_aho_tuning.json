@@ -1,0 +1,28 @@
+{
+  "title": "Three-Phase Inverter AHO-Based VOC Tuning Rules",
+  "topic": "tuning",
+  "topology": "inverter_3ph",
+  "architecture": "voc_aho",
+  "power_stage_family": "dc_ac_inverter",
+  "control_objective": "grid_forming",
+  "operating_mode": "weak_grid",
+  "plant_features": ["weak_grid", "sinusoidal_tracking"],
+  "tags": ["weak_grid", "grid_connected", "voc", "aho"],
+  "source_type": "tuning_rule",
+  "source_refs": ["benchmarking_nonlinear_oscillators_grid_forming"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Amplitude restoration",
+      "text": "Tune oscillator amplitude restoration conservatively so the oscillator state converges smoothly before any outer voltage-restoration action becomes aggressive."
+    },
+    {
+      "heading": "Loop ordering",
+      "text": "Keep the current-protection or current-inner loop faster than the oscillator envelope dynamics so current limiting clips or bounds the commanded waveform without destabilizing the oscillator."
+    },
+    {
+      "heading": "Weak-grid caution",
+      "text": "In weak-grid mode, prefer modest oscillator forcing and damping values before increasing voltage-restoration gain, and avoid making oscillator frequency fully dependent on a fixed external angle source."
+    }
+  ]
+}

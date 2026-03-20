@@ -210,6 +210,108 @@
     }
   },
   {
+    "chunk_id": "inverter_voc_aho:0",
+    "source_path": "controllers\\inverter_voc_aho.json",
+    "title": "Three-Phase Inverter AHO-Based VOC Notes",
+    "section": "When to use",
+    "text": "Use an AHO-based virtual oscillator controller for three-phase inverter grid-forming operation when sinusoidal self-synchronizing behavior is desired and the requirement explicitly prefers oscillator-based regulation over VSG emulation.",
+    "topic": "strategy",
+    "topology": "inverter_3ph",
+    "architecture": "voc_aho",
+    "power_stage_family": "dc_ac_inverter",
+    "modulation": "",
+    "control_objective": "grid_forming",
+    "operating_mode": "weak_grid",
+    "plant_features": [
+      "weak_grid",
+      "sinusoidal_tracking",
+      "grid_synchronization"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "benchmarking_nonlinear_oscillators_grid_forming"
+    ],
+    "confidence": "medium",
+    "tags": [
+      "weak_grid",
+      "grid_connected",
+      "current_loop",
+      "voc",
+      "aho"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "inverter_voc_aho:1",
+    "source_path": "controllers\\inverter_voc_aho.json",
+    "title": "Three-Phase Inverter AHO-Based VOC Notes",
+    "section": "Current-loop coordination",
+    "text": "Keep an inner current-limiting or current-regulating layer active beneath the oscillator so load-step and startup stress do not rely on oscillator dynamics alone. The oscillator should create the voltage waveform, while the current layer enforces protection.",
+    "topic": "strategy",
+    "topology": "inverter_3ph",
+    "architecture": "voc_aho",
+    "power_stage_family": "dc_ac_inverter",
+    "modulation": "",
+    "control_objective": "grid_forming",
+    "operating_mode": "weak_grid",
+    "plant_features": [
+      "weak_grid",
+      "sinusoidal_tracking",
+      "grid_synchronization"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "benchmarking_nonlinear_oscillators_grid_forming"
+    ],
+    "confidence": "medium",
+    "tags": [
+      "weak_grid",
+      "grid_connected",
+      "current_loop",
+      "voc",
+      "aho"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
+    "chunk_id": "inverter_voc_aho:2",
+    "source_path": "controllers\\inverter_voc_aho.json",
+    "title": "Three-Phase Inverter AHO-Based VOC Notes",
+    "section": "Tradeoff",
+    "text": "AHO-based VOC can provide clean sinusoidal references and autonomous synchronization, but amplitude restoration, dispatchability, and current-limit interaction must be tuned carefully in weak-grid operation.",
+    "topic": "strategy",
+    "topology": "inverter_3ph",
+    "architecture": "voc_aho",
+    "power_stage_family": "dc_ac_inverter",
+    "modulation": "",
+    "control_objective": "grid_forming",
+    "operating_mode": "weak_grid",
+    "plant_features": [
+      "weak_grid",
+      "sinusoidal_tracking",
+      "grid_synchronization"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "benchmarking_nonlinear_oscillators_grid_forming"
+    ],
+    "confidence": "medium",
+    "tags": [
+      "weak_grid",
+      "grid_connected",
+      "current_loop",
+      "voc",
+      "aho"
+    ],
+    "metadata": {
+      "source_type": "controller_pattern"
+    }
+  },
+  {
     "chunk_id": "inverter_vsg:0",
     "source_path": "controllers\\inverter_vsg.json",
     "title": "Three-Phase Inverter VSG Notes",
@@ -338,6 +440,130 @@
     }
   },
   {
+    "chunk_id": "inverter_voc_aho_implementation:0",
+    "source_path": "implementation\\inverter_voc_aho_implementation.json",
+    "title": "AHO-Based VOC Implementation Notes",
+    "section": "State handling",
+    "text": "Represent the oscillator with explicit state variables and compute modulation or voltage references primarily from those oscillator states. Do not reduce VOC to a PI controller plus a small sinusoidal injection term.",
+    "topic": "implementation",
+    "topology": "inverter_3ph",
+    "architecture": "voc_aho",
+    "power_stage_family": "dc_ac_inverter",
+    "modulation": "",
+    "control_objective": "grid_forming",
+    "operating_mode": "weak_grid",
+    "plant_features": [
+      "sinusoidal_tracking"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "benchmarking_nonlinear_oscillators_grid_forming"
+    ],
+    "confidence": "medium",
+    "tags": [
+      "implementation",
+      "voc",
+      "aho",
+      "current_loop"
+    ],
+    "metadata": {
+      "source_type": "implementation_rule"
+    }
+  },
+  {
+    "chunk_id": "inverter_voc_aho_implementation:1",
+    "source_path": "implementation\\inverter_voc_aho_implementation.json",
+    "title": "AHO-Based VOC Implementation Notes",
+    "section": "Startup",
+    "text": "Initialize oscillator states to a finite amplitude and pair them with active current limiting during startup so the converter does not produce a large uncontrolled transient while the oscillator builds.",
+    "topic": "implementation",
+    "topology": "inverter_3ph",
+    "architecture": "voc_aho",
+    "power_stage_family": "dc_ac_inverter",
+    "modulation": "",
+    "control_objective": "grid_forming",
+    "operating_mode": "weak_grid",
+    "plant_features": [
+      "sinusoidal_tracking"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "benchmarking_nonlinear_oscillators_grid_forming"
+    ],
+    "confidence": "medium",
+    "tags": [
+      "implementation",
+      "voc",
+      "aho",
+      "current_loop"
+    ],
+    "metadata": {
+      "source_type": "implementation_rule"
+    }
+  },
+  {
+    "chunk_id": "inverter_voc_aho_implementation:2",
+    "source_path": "implementation\\inverter_voc_aho_implementation.json",
+    "title": "AHO-Based VOC Implementation Notes",
+    "section": "Waveform generation",
+    "text": "Generate three-phase references from the oscillator state itself or from an internally generated oscillator angle. Avoid using a fully independent fixed-frequency output angle that bypasses the oscillator dynamics.",
+    "topic": "implementation",
+    "topology": "inverter_3ph",
+    "architecture": "voc_aho",
+    "power_stage_family": "dc_ac_inverter",
+    "modulation": "",
+    "control_objective": "grid_forming",
+    "operating_mode": "weak_grid",
+    "plant_features": [
+      "sinusoidal_tracking"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "benchmarking_nonlinear_oscillators_grid_forming"
+    ],
+    "confidence": "medium",
+    "tags": [
+      "implementation",
+      "voc",
+      "aho",
+      "current_loop"
+    ],
+    "metadata": {
+      "source_type": "implementation_rule"
+    }
+  },
+  {
+    "chunk_id": "inverter_voc_aho_implementation:3",
+    "source_path": "implementation\\inverter_voc_aho_implementation.json",
+    "title": "AHO-Based VOC Implementation Notes",
+    "section": "Protection coordination",
+    "text": "Apply current limiting and modulation saturation as bounded nonlinear constraints around the oscillator-generated reference rather than replacing the oscillator with a pure magnitude PI loop.",
+    "topic": "implementation",
+    "topology": "inverter_3ph",
+    "architecture": "voc_aho",
+    "power_stage_family": "dc_ac_inverter",
+    "modulation": "",
+    "control_objective": "grid_forming",
+    "operating_mode": "weak_grid",
+    "plant_features": [
+      "sinusoidal_tracking"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "benchmarking_nonlinear_oscillators_grid_forming"
+    ],
+    "confidence": "medium",
+    "tags": [
+      "implementation",
+      "voc",
+      "aho",
+      "current_loop"
+    ],
+    "metadata": {
+      "source_type": "implementation_rule"
+    }
+  },
+  {
     "chunk_id": "revision_patterns:0",
     "source_path": "revision\\revision_patterns.json",
     "title": "Cross-Topology Revision Patterns",
@@ -416,6 +642,68 @@
     ],
     "metadata": {
       "source_type": "revision_rule"
+    }
+  },
+  {
+    "chunk_id": "benchmarking_nonlinear_oscillators_grid_forming:0",
+    "source_path": "sources\\benchmarking_nonlinear_oscillators_grid_forming.json",
+    "title": "Benchmarking Nonlinear Oscillators for Grid-Forming Inverter Control",
+    "section": "Linked claims",
+    "text": "Nonlinear oscillator based grid-forming control should be described with explicit oscillator states, amplitude-limiting dynamics, and a clearly defined mapping from oscillator state to inverter voltage or modulation commands.",
+    "topic": "source_notes",
+    "topology": "",
+    "architecture": "",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [
+      "benchmarking_nonlinear_oscillators_grid_forming"
+    ],
+    "confidence": "",
+    "tags": [],
+    "metadata": {
+      "source_type": "paper_source",
+      "source_id": "benchmarking_nonlinear_oscillators_grid_forming",
+      "year": 2023,
+      "venue": "Paper",
+      "claim_id": "oscillator_state_dynamics",
+      "claim_type": "implementation_rule",
+      "evidence_strength": "medium",
+      "file_path": "papers/voc/Benchmarking_Nonlinear_Oscillators_for_Grid-Fo.pdf"
+    }
+  },
+  {
+    "chunk_id": "benchmarking_nonlinear_oscillators_grid_forming:1",
+    "source_path": "sources\\benchmarking_nonlinear_oscillators_grid_forming.json",
+    "title": "Benchmarking Nonlinear Oscillators for Grid-Forming Inverter Control",
+    "section": "Current-limit interaction",
+    "text": "Oscillator-based grid-forming controllers need explicit coordination between oscillator dynamics and inner current limiting so transient stress is bounded during startup and load steps.",
+    "topic": "source_notes",
+    "topology": "",
+    "architecture": "",
+    "power_stage_family": "",
+    "modulation": "",
+    "control_objective": "",
+    "operating_mode": "",
+    "plant_features": [],
+    "revision_trigger": "",
+    "source_refs": [
+      "benchmarking_nonlinear_oscillators_grid_forming"
+    ],
+    "confidence": "",
+    "tags": [],
+    "metadata": {
+      "source_type": "paper_source",
+      "source_id": "benchmarking_nonlinear_oscillators_grid_forming",
+      "year": 2023,
+      "venue": "Paper",
+      "claim_id": "current_limit_coordination",
+      "claim_type": "tuning_rule",
+      "evidence_strength": "medium",
+      "file_path": "papers/voc/Benchmarking_Nonlinear_Oscillators_for_Grid-Fo.pdf"
     }
   },
   {
@@ -1178,6 +1466,102 @@
       "grid_connected",
       "lcl",
       "sampling"
+    ],
+    "metadata": {
+      "source_type": "tuning_rule"
+    }
+  },
+  {
+    "chunk_id": "inverter_voc_aho_tuning:0",
+    "source_path": "tuning\\inverter_voc_aho_tuning.json",
+    "title": "Three-Phase Inverter AHO-Based VOC Tuning Rules",
+    "section": "Amplitude restoration",
+    "text": "Tune oscillator amplitude restoration conservatively so the oscillator state converges smoothly before any outer voltage-restoration action becomes aggressive.",
+    "topic": "tuning",
+    "topology": "inverter_3ph",
+    "architecture": "voc_aho",
+    "power_stage_family": "dc_ac_inverter",
+    "modulation": "",
+    "control_objective": "grid_forming",
+    "operating_mode": "weak_grid",
+    "plant_features": [
+      "weak_grid",
+      "sinusoidal_tracking"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "benchmarking_nonlinear_oscillators_grid_forming"
+    ],
+    "confidence": "medium",
+    "tags": [
+      "weak_grid",
+      "grid_connected",
+      "voc",
+      "aho"
+    ],
+    "metadata": {
+      "source_type": "tuning_rule"
+    }
+  },
+  {
+    "chunk_id": "inverter_voc_aho_tuning:1",
+    "source_path": "tuning\\inverter_voc_aho_tuning.json",
+    "title": "Three-Phase Inverter AHO-Based VOC Tuning Rules",
+    "section": "Loop ordering",
+    "text": "Keep the current-protection or current-inner loop faster than the oscillator envelope dynamics so current limiting clips or bounds the commanded waveform without destabilizing the oscillator.",
+    "topic": "tuning",
+    "topology": "inverter_3ph",
+    "architecture": "voc_aho",
+    "power_stage_family": "dc_ac_inverter",
+    "modulation": "",
+    "control_objective": "grid_forming",
+    "operating_mode": "weak_grid",
+    "plant_features": [
+      "weak_grid",
+      "sinusoidal_tracking"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "benchmarking_nonlinear_oscillators_grid_forming"
+    ],
+    "confidence": "medium",
+    "tags": [
+      "weak_grid",
+      "grid_connected",
+      "voc",
+      "aho"
+    ],
+    "metadata": {
+      "source_type": "tuning_rule"
+    }
+  },
+  {
+    "chunk_id": "inverter_voc_aho_tuning:2",
+    "source_path": "tuning\\inverter_voc_aho_tuning.json",
+    "title": "Three-Phase Inverter AHO-Based VOC Tuning Rules",
+    "section": "Weak-grid caution",
+    "text": "In weak-grid mode, prefer modest oscillator forcing and damping values before increasing voltage-restoration gain, and avoid making oscillator frequency fully dependent on a fixed external angle source.",
+    "topic": "tuning",
+    "topology": "inverter_3ph",
+    "architecture": "voc_aho",
+    "power_stage_family": "dc_ac_inverter",
+    "modulation": "",
+    "control_objective": "grid_forming",
+    "operating_mode": "weak_grid",
+    "plant_features": [
+      "weak_grid",
+      "sinusoidal_tracking"
+    ],
+    "revision_trigger": "",
+    "source_refs": [
+      "benchmarking_nonlinear_oscillators_grid_forming"
+    ],
+    "confidence": "medium",
+    "tags": [
+      "weak_grid",
+      "grid_connected",
+      "voc",
+      "aho"
     ],
     "metadata": {
       "source_type": "tuning_rule"

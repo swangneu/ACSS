@@ -51,9 +51,9 @@ class ControlAgent:
         references = extract_references(retrieved_context)
 
         if topology.topology == 'inverter_3ph':
-            base_kp = {'dq': 0.08, 'droop': 0.06, 'voc': 0.05, 'vsg': 0.04, 'cascaded': 0.05}.get(architecture, 0.08)
+            base_kp = {'dq': 0.08, 'droop': 0.06, 'voc': 0.05, 'voc_aho': 0.045, 'vsg': 0.04, 'cascaded': 0.05}.get(architecture, 0.08)
             kp = base_kp * (1.0 + 0.15 * iteration)
-            ki = kp * (600.0 if architecture in {'vsg', 'droop'} else 500.0)
+            ki = kp * (650.0 if architecture == 'voc_aho' else 600.0 if architecture in {'vsg', 'droop'} else 500.0)
             ts = 1.0 / max(req.fsw_hz, 1.0)
             inrush_limit = float(req.inrush_limit_a if req.inrush_limit_a is not None else max(10.0, req.pout_w / max(req.vout_target_v, 1.0)))
             return ControlDesign(
@@ -62,7 +62,7 @@ class ControlAgent:
                 ki=ki,
                 sample_time_s=ts,
                 architecture=architecture if architecture != 'pi' else 'dq',
-                current_loop_enabled=True if architecture in {'dq', 'droop', 'voc', 'vsg', 'cascaded'} else current_loop,
+                current_loop_enabled=True if architecture in {'dq', 'droop', 'voc', 'voc_aho', 'vsg', 'cascaded'} else current_loop,
                 inrush_control=inrush_control,
                 inrush_limit_a=inrush_limit if inrush_control != 'none' else 0.0,
                 secondary_controller=secondary,
@@ -119,7 +119,7 @@ class ControlAgent:
     def _build_design(self, req: RequirementSpec, llm_result: dict[str, object], iteration: int, retrieved_context: object) -> ControlDesign:
         inrush_raw = _normalize_inrush(str(llm_result.get('inrush_control', 'none')))
         arch = str(llm_result.get('architecture', 'pi')).strip().lower()
-        if arch not in {'pi', 'dq', 'droop', 'voc', 'vsg', 'cascaded', 'pfc_current_mode'}:
+        if arch not in {'pi', 'dq', 'droop', 'voc', 'voc_aho', 'vsg', 'cascaded', 'pfc_current_mode'}:
             arch = 'pi'
         references = extract_references(retrieved_context)
         return ControlDesign(
@@ -201,7 +201,7 @@ def _control_objective(req: RequirementSpec, topology: str, architecture: str) -
     if top == 'pfc':
         return 'power_factor_correction'
     if 'inverter' in top:
-        if arch in {'vsg', 'voc', 'droop'} or req.weak_grid_mode:
+        if arch in {'vsg', 'voc', 'voc_aho', 'droop'} or req.weak_grid_mode:
             return 'grid_forming'
         return 'grid_following'
     if arch == 'cascaded':

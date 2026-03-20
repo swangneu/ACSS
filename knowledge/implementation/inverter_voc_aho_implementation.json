@@ -1,0 +1,32 @@
+{
+  "title": "AHO-Based VOC Implementation Notes",
+  "topic": "implementation",
+  "topology": "inverter_3ph",
+  "architecture": "voc_aho",
+  "power_stage_family": "dc_ac_inverter",
+  "control_objective": "grid_forming",
+  "operating_mode": "weak_grid",
+  "plant_features": ["sinusoidal_tracking"],
+  "tags": ["implementation", "voc", "aho", "current_loop"],
+  "source_type": "implementation_rule",
+  "source_refs": ["benchmarking_nonlinear_oscillators_grid_forming"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "State handling",
+      "text": "Represent the oscillator with explicit state variables and compute modulation or voltage references primarily from those oscillator states. Do not reduce VOC to a PI controller plus a small sinusoidal injection term."
+    },
+    {
+      "heading": "Startup",
+      "text": "Initialize oscillator states to a finite amplitude and pair them with active current limiting during startup so the converter does not produce a large uncontrolled transient while the oscillator builds."
+    },
+    {
+      "heading": "Waveform generation",
+      "text": "Generate three-phase references from the oscillator state itself or from an internally generated oscillator angle. Avoid using a fully independent fixed-frequency output angle that bypasses the oscillator dynamics."
+    },
+    {
+      "heading": "Protection coordination",
+      "text": "Apply current limiting and modulation saturation as bounded nonlinear constraints around the oscillator-generated reference rather than replacing the oscillator with a pure magnitude PI loop."
+    }
+  ]
+}

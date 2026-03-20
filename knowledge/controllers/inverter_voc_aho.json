@@ -1,0 +1,28 @@
+{
+  "title": "Three-Phase Inverter AHO-Based VOC Notes",
+  "topic": "strategy",
+  "topology": "inverter_3ph",
+  "architecture": "voc_aho",
+  "power_stage_family": "dc_ac_inverter",
+  "control_objective": "grid_forming",
+  "operating_mode": "weak_grid",
+  "plant_features": ["weak_grid", "sinusoidal_tracking", "grid_synchronization"],
+  "tags": ["weak_grid", "grid_connected", "current_loop", "voc", "aho"],
+  "source_type": "controller_pattern",
+  "source_refs": ["benchmarking_nonlinear_oscillators_grid_forming"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "When to use",
+      "text": "Use an AHO-based virtual oscillator controller for three-phase inverter grid-forming operation when sinusoidal self-synchronizing behavior is desired and the requirement explicitly prefers oscillator-based regulation over VSG emulation."
+    },
+    {
+      "heading": "Current-loop coordination",
+      "text": "Keep an inner current-limiting or current-regulating layer active beneath the oscillator so load-step and startup stress do not rely on oscillator dynamics alone. The oscillator should create the voltage waveform, while the current layer enforces protection."
+    },
+    {
+      "heading": "Tradeoff",
+      "text": "AHO-based VOC can provide clean sinusoidal references and autonomous synchronization, but amplitude restoration, dispatchability, and current-limit interaction must be tuned carefully in weak-grid operation."
+    }
+  ]
+}

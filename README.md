@@ -20,8 +20,15 @@ Then ACSS does:
    - emits `acss_params.m`
    - emits wrapper C file (for example `control_sfunc_wrapper.c`)
    - runs MATLAB/Simulink if available, else synthetic fallback
-7. Evaluation agent: checks limits and pass/fail.
-8. If not passed, revising can change control structure and plant/controller settings, then repeats until `max_iterations`.
+7. Visualization agent:
+   - exports waveform plots for each iteration
+   - exports inverter-focused three-phase voltage/current plots when waveform data supports it
+8. Evaluation agent: checks limits and pass/fail.
+9. If not passed, revising can change control structure and plant/controller settings, then repeats until `max_iterations`.
+
+Runtime progress in terminal:
+- ACSS now prints per-iteration progress with simple progress bars and step names.
+- Long MATLAB-backed runs print simulation status so you can see that the workflow is still advancing.
 
 Optional human-in-the-loop mode:
 - Add `--human-review` to pause after topology, sensors, control strategy, control, simulation, evaluation, and post-revision outputs.
@@ -50,29 +57,34 @@ What `model_payload.json` means (plain words):
 ## Setup
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+& '.\.venv\bin\python.exe' -m pip install -r requirements.txt
+```
+
+If your local virtual environment is a non-standard layout and does not provide `.\.venv\Scripts\Activate.ps1`, run commands directly with:
+
+```powershell
+& '.\.venv\bin\python.exe' --version
 ```
 
 ## Run
 MATLAB-backed run (recommended):
 ```powershell
-python -m src.main --requirements examples/requirements_buck_48to12_500w.json --template-slx examples/topology.slx --out runs
+& '.\.venv\bin\python.exe' -m src.main --requirements examples/requirements_buck_48to12_500w.json --template-slx examples/topology.slx --out runs
 ```
 
 Synthetic smoke run (no MATLAB invocation):
 ```powershell
-python -m src.main --requirements examples/requirements_buck_48to12_500w.json --template-slx examples/topology.slx --out runs --no-matlab
+& '.\.venv\bin\python.exe' -m src.main --requirements examples/requirements_buck_48to12_500w.json --template-slx examples/topology.slx --out runs --no-matlab
 ```
 
 Human-reviewed run (pause after each major step):
 ```powershell
-python -m src.main --requirements examples/requirements_buck_48to12_500w.json --template-slx examples/topology.slx --out runs --human-review
+& '.\.venv\bin\python.exe' -m src.main --requirements examples/requirements_buck_48to12_500w.json --template-slx examples/topology.slx --out runs --human-review
 ```
 
 Explicit template override:
 ```powershell
-python -m src.main --requirements examples/requirements_inverter_3ph_grid_loadstep_template.json --template-slx examples/topology_inverter.slx --out runs
+& '.\.venv\bin\python.exe' -m src.main --requirements examples/requirements_inverter_3ph_grid_loadstep_template.json --template-slx examples/topology_inverter.slx --out runs
 ```
 
 Flag summary:
@@ -110,6 +122,8 @@ Each run creates `runs/<timestamp>_<requirements.name>/` with:
   - `control_sfunc_wrapper.c` (or template module name)
 - `waveforms.json` (synthetic) or `*_waveform.json` via MATLAB result
 - `waveforms.svg` or `*_waveform.svg` preview images for quick inspection
+  - `visualization_summary.json`
+  - `waveforms_3ph.json` and `waveforms_3ph.svg` for inverter-oriented three-phase visualization
   - `matlab_result.json`, `matlab_stdout.log`, `matlab_stderr.log` when MATLAB is invoked
 - `run_summary.json`
 - `topology.review.json` in the run root when `--human-review` is enabled
@@ -215,8 +229,25 @@ Paper guidance:
 - Distill reusable engineering claims from papers into compact JSON entries under the topic folders above.
 - Use raw PDFs as upstream evidence, not as the primary online retrieval format for ACSS decisions.
 
+Local paper folder:
+- Store private or large paper PDFs under `papers/`, for example `papers/voc/`.
+- The repo keeps the folder structure, but `.gitignore` excludes the actual paper files by default.
+- If you add a new paper locally, also add a matching source metadata file under `knowledge/sources/` that points to the PDF path.
+
 ## Workflow diagram
 - Editable source: `images/workflows/acss_workflow.excalidraw`
+
+## Visualization outputs
+ACSS now includes a dedicated visualization stage after simulation.
+
+- For all runs, ACSS exports standard waveform previews such as `waveforms.svg`.
+- For inverter runs, ACSS also exports `waveforms_3ph.svg` and `waveforms_3ph.json`.
+- These plots are intended to make three-phase voltage and current behavior easier to inspect in a normal terminal-driven workflow.
+
+Current behavior:
+- Synthetic inverter runs generate phase-voltage and phase-current traces directly in `waveforms.json`.
+- The visualization agent uses those traces to create three-phase plots.
+- MATLAB-backed runs still depend on what the MATLAB export writes into waveform JSON; richer MATLAB waveform export can be extended further.
 
 ## Common errors
 - Missing template path:
