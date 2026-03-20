@@ -230,8 +230,8 @@ Paper guidance:
 - Use raw PDFs as upstream evidence, not as the primary online retrieval format for ACSS decisions.
 
 Local paper folder:
-- Store private or large paper PDFs under `papers/`, for example `papers/voc/`.
-- The repo keeps the folder structure, but `.gitignore` excludes the actual paper files by default.
+- Create a local `papers/` folder when you want to add private or large reference PDFs, for example `papers/voc/`.
+- The repo ignores `papers/` by default, so local paper files are not pushed to git.
 - If you add a new paper locally, also add a matching source metadata file under `knowledge/sources/` that points to the PDF path.
 
 ## Workflow diagram
