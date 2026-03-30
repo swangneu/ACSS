@@ -1,1 +1,3 @@
 # Kept minimal on purpose; scaffold uses stdlib only.
+# Optional higher-fidelity Python-only simulator backend:
+# PySpice

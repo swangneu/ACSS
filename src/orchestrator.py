@@ -101,7 +101,7 @@ class ACSSOrchestrator:
             progress.done('visualization', files=len(sim.visualization_files))
             sim = self._review_step(iter_dir, 'simulation', sim)
             progress.step('evaluation', i, req.max_iterations, 'Evaluating metrics')
-            eval_result = self.evaluation_agent.evaluate(req, sim)
+            eval_result = self.evaluation_agent.evaluate(req, sim, report_dir=iter_dir)
             progress.done('evaluation', passed=eval_result.passed, score=f'{eval_result.score:.2f}')
             eval_result = self._review_step(iter_dir, 'evaluation', eval_result)
             engineer_review = self._engineer_review_iteration(iter_dir, i, req, strategy, control, sim, eval_result)

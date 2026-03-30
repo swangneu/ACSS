@@ -23,7 +23,7 @@ Then ACSS does:
 7. Visualization agent:
    - exports waveform plots for each iteration
    - exports inverter-focused three-phase voltage/current plots when waveform data supports it
-8. Evaluation agent: checks limits and pass/fail.
+8. Evaluation agent: checks limits and pass/fail using scalar metrics plus a waveform harness.
 9. If not passed, revising can change control structure and plant/controller settings, then repeats until `max_iterations`.
 
 Runtime progress in terminal:
@@ -47,6 +47,7 @@ What `model_payload.json` means (plain words):
 ## Validation rule (important)
 - Final pass currently requires validation mode `simulink_matlab`.
 - Synthetic results (`--no-matlab`, MATLAB missing, or MATLAB fallback) are useful for smoke testing, but are not accepted as final validation.
+- Python-only simulation can use an optional PySpice backend (`validation=pyspice`) before falling back to synthetic.
 
 ## Prerequisites
 - Python 3.10+
@@ -58,6 +59,11 @@ What `model_payload.json` means (plain words):
 ```powershell
 python -m venv .venv
 & '.\.venv\bin\python.exe' -m pip install -r requirements.txt
+```
+
+Optional Python-only backend (higher fidelity than synthetic fallback):
+```powershell
+& '.\.venv\bin\python.exe' -m pip install PySpice
 ```
 
 If your local virtual environment is a non-standard layout and does not provide `.\.venv\Scripts\Activate.ps1`, run commands directly with:
@@ -77,6 +83,11 @@ Synthetic smoke run (no MATLAB invocation):
 & '.\.venv\bin\python.exe' -m src.main --requirements examples/requirements_buck_48to12_500w.json --template-slx examples/topology.slx --out runs --no-matlab
 ```
 
+Run waveform harness directly on exported waveform JSON:
+```powershell
+& '.\.venv\bin\python.exe' -m src.evaluation.run_harness --requirements examples/requirements_buck_48to12_500w.json --waveform runs\<run>\iter_00\waveforms.json --out runs\<run>\iter_00\harness_report.json
+```
+
 Human-reviewed run (pause after each major step):
 ```powershell
 & '.\.venv\bin\python.exe' -m src.main --requirements examples/requirements_buck_48to12_500w.json --template-slx examples/topology.slx --out runs --human-review
@@ -91,6 +102,11 @@ Flag summary:
 - `--template-slx`: required on every run
 - `--no-matlab`: skip MATLAB and use the synthetic simulator path
 - `--human-review`: pause after each major workflow step and allow manual approval or JSON edits
+
+Python simulator backend selector:
+- `ACSS_PYTHON_SIM_BACKEND=auto` (default): try PySpice first (buck topology), else synthetic.
+- `ACSS_PYTHON_SIM_BACKEND=pyspice`: require PySpice backend, else log and fall back to synthetic.
+- `ACSS_PYTHON_SIM_BACKEND=synthetic`: always use synthetic fallback.
 
 ## Requirements JSON
 `--requirements` must point to a JSON file that includes a non-empty `design_prompt`.
@@ -117,15 +133,18 @@ Each run creates `runs/<timestamp>_<requirements.name>/` with:
 - `iter_XX/`
   - `model_payload.json`
   - `summary.json`
+  - `evaluation_report.json` (waveform harness checks + computed waveform metrics)
   - `*.review.json` files when `--human-review` is enabled
   - `acss_params.m`
   - `control_sfunc_wrapper.c` (or template module name)
-- `waveforms.json` (synthetic) or `*_waveform.json` via MATLAB result
-- `waveforms.svg` or `*_waveform.svg` preview images for quick inspection
+  - `waveforms.json` (synthetic/PySpice) or MATLAB-exported waveform JSON
+  - `waveforms.svg` (preview image generated from the waveform JSON)
   - `visualization_summary.json`
   - `waveforms_3ph.json` and `waveforms_3ph.svg` for inverter-oriented three-phase visualization
+  - `topology_template_info.json` (parsed template metadata + parameter resolution)
   - `matlab_result.json`, `matlab_stdout.log`, `matlab_stderr.log` when MATLAB is invoked
 - `run_summary.json`
+- `waveform_evolution.json` and `waveform_evolution.svg` when at least one iteration contains usable voltage waveform data
 - `topology.review.json` in the run root when `--human-review` is enabled
 - `engineer_review.json` in each iteration folder when `--human-review` is enabled
 - `final_artifacts/` only if an iteration passes evaluation

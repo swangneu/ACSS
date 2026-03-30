@@ -4,3 +4,4 @@ runs/
 *.pyc
 src/llm/local_secrets.py
 papers/
+.matlab_runtime/

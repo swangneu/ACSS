@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -25,8 +26,23 @@ def run_matlab_stub(payload_path: Path, out_dir: Path, template_slx: Path | None
             f"acss_build_and_run('{payload_path.as_posix()}','{out_json.as_posix()}','{template_arg}')"
         ),
     ]
+    runtime_root = out_dir / '.matlab_runtime'
+    home_dir = runtime_root / 'home'
+    temp_dir = runtime_root / 'tmp'
+    pref_dir = runtime_root / 'pref'
+    home_dir.mkdir(parents=True, exist_ok=True)
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    pref_dir.mkdir(parents=True, exist_ok=True)
+
+    env = os.environ.copy()
+    env['USERPROFILE'] = str(home_dir)
+    env['HOME'] = str(home_dir)
+    env['TEMP'] = str(temp_dir)
+    env['TMP'] = str(temp_dir)
+    env['MATLAB_PREFDIR'] = str(pref_dir)
+
     try:
-        completed = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        completed = subprocess.run(cmd, check=True, capture_output=True, text=True, env=env)
         (out_dir / 'matlab_stdout.log').write_text(completed.stdout or '', encoding='utf-8')
         (out_dir / 'matlab_stderr.log').write_text(completed.stderr or '', encoding='utf-8')
     except Exception as e:

@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 import math
+import os
 from pathlib import Path
 from dataclasses import asdict
 
 from src.contracts import ControlDesign, RequirementSpec, SimulationResult, TopologyDesign, dump_json
 from src.matlab_bridge import run_matlab_stub
+from src.sim.pyspice_backend import run_pyspice_buck
 from src.slx_template import load_template_info
 
 
@@ -107,6 +109,28 @@ class SimulationAgent:
                 return maybe
             print(f'[simulation] MATLAB unavailable or failed; falling back to synthetic for {payload_path.name}', flush=True)
 
+        py_backend = os.getenv('ACSS_PYTHON_SIM_BACKEND', 'auto').strip().lower()
+        if py_backend in {'auto', 'pyspice'}:
+            maybe_py = run_pyspice_buck(req, topology, control, out_dir)
+            if maybe_py is not None:
+                maybe_py.waveform_image_files = _export_waveform_images(maybe_py.waveform_files, out_dir)
+                maybe_py.code_files = code_files
+                maybe_py.raw = {
+                    **maybe_py.raw,
+                    'payload': str(payload_path),
+                    'control': asdict(control),
+                    'topology': asdict(topology),
+                    'waveform_image_files': maybe_py.waveform_image_files,
+                    'parameter_resolution': {
+                        'resolved_symbols': sorted(resolved_values.keys()),
+                        'unresolved_symbols': unresolved_symbols,
+                    },
+                }
+                print(f'[simulation] Python backend completed ({py_backend}) for {payload_path.name}', flush=True)
+                return maybe_py
+            if py_backend == 'pyspice':
+                print('[simulation] PySpice backend requested but unavailable; using synthetic fallback', flush=True)
+
         # Synthetic fallback for environments without MATLAB.
         ratio = req.vout_target_v / max(req.vin_nominal_v, 1e-9)
         topology_bonus = 1.0 if ((ratio < 1 and topology.topology == 'buck') or (ratio > 1 and topology.topology == 'boost')) else 0.92
@@ -128,10 +152,7 @@ class SimulationAgent:
         if topology.topology == 'inverter_3ph':
             waveforms = _build_inverter_waveforms(req, topology, control, time_s)
         else:
-            waveforms = {
-                'time_s': time_s,
-                'vout_v': [req.vout_target_v * (1.0 - math.exp(-i / 35.0)) for i in range(200)],
-            }
+            waveforms = _build_buck_waveforms(req, topology, control, time_s)
         wf_path = out_dir / 'waveforms.json'
         dump_json(wf_path, waveforms)
         image_files = _export_waveform_images([str(wf_path)], out_dir)
@@ -619,4 +640,50 @@ def _build_inverter_waveforms(
         'ic_a': ic,
         'topology': topology.topology,
         'architecture': control.architecture,
+    }
+
+
+def _build_buck_waveforms(
+    req: RequirementSpec,
+    topology: TopologyDesign,
+    control: ControlDesign,
+    time_s: list[float],
+) -> dict[str, object]:
+    vref = max(float(req.vout_target_v), 1e-9)
+    kp = max(float(control.kp), 1e-6)
+    ki = max(float(control.ki), 1e-6)
+    l_h = max(float(topology.inductor_uH) * 1e-6, 1e-9)
+    c_f = max(float(topology.capacitor_uF) * 1e-6, 1e-9)
+    arch = (control.architecture or 'pi').strip().lower()
+
+    # Approximate natural dynamics with visible dependence on gains and L/C.
+    wn = min(9000.0, max(250.0, 90.0 + 1400.0 * kp + 55.0 * math.sqrt(ki) + 35.0 / math.sqrt(l_h * c_f)))
+    zeta = min(1.4, max(0.15, 0.22 + 2.1 * kp + 0.015 * math.sqrt(ki)))
+    if arch == 'cascaded':
+        zeta = min(1.5, zeta + 0.12)
+    fsw = max(float(req.fsw_hz), 1.0)
+
+    vout_v: list[float] = []
+    for t in time_s:
+        if zeta < 1.0:
+            wd = wn * math.sqrt(max(1e-9, 1.0 - zeta * zeta))
+            phi = math.atan2(math.sqrt(max(1e-9, 1.0 - zeta * zeta)), zeta)
+            base = 1.0 - math.exp(-zeta * wn * t) / math.sqrt(max(1e-9, 1.0 - zeta * zeta)) * math.sin(wd * t + phi)
+        else:
+            base = 1.0 - math.exp(-wn * t)
+        ripple_amp = (0.008 + 0.08 / math.sqrt(max(float(topology.capacitor_uF), 1.0))) * vref
+        ripple_decay = 0.2 + 0.8 * math.exp(-t / 0.005)
+        ripple = ripple_amp * ripple_decay * math.sin(2.0 * math.pi * fsw * t)
+        vout_v.append(vref * base + ripple)
+
+    return {
+        'time_s': time_s,
+        'vout_v': vout_v,
+        'topology': topology.topology,
+        'architecture': control.architecture,
+        'model': 'synthetic_buck_damped_second_order',
+        'model_params': {
+            'wn_rad_s': wn,
+            'zeta': zeta,
+        },
     }
