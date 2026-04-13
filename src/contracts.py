@@ -34,6 +34,8 @@ class TopologyDesign:
     inductor_uH: float
     capacitor_uF: float
     switches: int
+    turns_ratio: float = 1.0   # Primary-to-secondary turns ratio (isolated converters)
+    resonant: bool = False      # True for LLC/SRC/LCC/CLLC — output is freq_control
 
 
 @dataclass

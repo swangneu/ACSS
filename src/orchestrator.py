@@ -7,6 +7,7 @@ from copy import deepcopy
 import json
 import math
 import shutil
+import textwrap
 
 from src.agents.control_agent import ControlAgent
 from src.agents.control_strategy_agent import ControlStrategyAgent
@@ -16,8 +17,19 @@ from src.agents.sensor_agent import SensorAgent
 from src.agents.simulation_agent import SimulationAgent
 from src.agents.topology_agent import TopologyAgent
 from src.agents.revising_agent import RevisingAgent
+from src.agents.tuning_agent import TuningAgent
 from src.agents.visualization_agent import VisualizationAgent
 from src.contracts import EngineerReview, IterationRecord, dump_json, load_requirements, to_dict
+from src.llm import DeepSeekClient
+from src.workflow import (
+    ControllerGenerator,
+    DesignSpecParser,
+    FailureDiagnoser,
+    HypothesisManager,
+    ResponseAnalyzer,
+    SimulationExecutor,
+)
+from src.workflow.contracts import HypothesisState, NextAction, to_json_dict
 
 
 class ACSSOrchestrator:
@@ -28,12 +40,14 @@ class ACSSOrchestrator:
         use_matlab: bool = True,
         template_slx: Path | None = None,
         human_review: bool = False,
+        workflow_mode: str = 'legacy',
     ):
         self.requirements_path = requirements_path
         self.out_root = out_root
         self.use_matlab = use_matlab
         self.template_slx = template_slx
         self.human_review = human_review
+        self.workflow_mode = workflow_mode.strip().lower()
 
         self.topology_agent = TopologyAgent()
         self.sensor_agent = SensorAgent()
@@ -44,6 +58,18 @@ class ACSSOrchestrator:
         self.visualization_agent = VisualizationAgent()
         self.evaluation_agent = EvaluationAgent()
         self.revising_agent = RevisingAgent()
+        self.tuning_agent = TuningAgent()
+        self.spec_parser = DesignSpecParser()
+        self.controller_generator = ControllerGenerator(
+            self.sensor_agent,
+            self.control_strategy_agent,
+            self.control_agent,
+            self.model_builder,
+        )
+        self.simulation_executor = SimulationExecutor(self.simulation_agent, self.visualization_agent)
+        self.response_analyzer = ResponseAnalyzer()
+        self.failure_diagnoser = FailureDiagnoser()
+        self.hypothesis_manager = HypothesisManager()
 
     def run(self) -> Path:
         if self.template_slx is None:
@@ -55,8 +81,28 @@ class ACSSOrchestrator:
         stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         run_dir = self.out_root / f'{stamp}_{req.name}'
         run_dir.mkdir(parents=True, exist_ok=True)
+        llm_client = DeepSeekClient()
+        if not llm_client.enabled:
+            message = (
+                'ACSS is configured for LLM-only execution. '
+                'No DeepSeek API key found. Configure DEEPSEEK_API_KEY (or src/llm/local_secrets.py) and rerun.'
+            )
+            print(f'[run] {message}', flush=True)
+            dump_json(
+                run_dir / 'run_summary.json',
+                {
+                    'requirements': asdict(req),
+                    'workflow_mode': self.workflow_mode,
+                    'aborted': True,
+                    'reason': message,
+                },
+            )
+            return run_dir
         progress = _ProgressReporter(req.max_iterations)
-        progress.start_run(req.name, run_dir, self.template_slx, self.use_matlab)
+        progress.start_run(req.name, run_dir, self.template_slx, self.use_matlab, self.workflow_mode)
+
+        if self.workflow_mode == 'layered':
+            return self._run_layered(req, run_dir, progress)
 
         records: list[IterationRecord] = []
 
@@ -139,7 +185,8 @@ class ACSSOrchestrator:
             if i >= req.max_iterations - 1:
                 break
             progress.step('revision', i, req.max_iterations, 'Revising topology/control for next iteration')
-            topology, control = self.revising_agent.revise(req, topology, control, eval_result, engineer_review, i)
+            waveform_report = self._load_waveform_report(iter_dir)
+            topology, control = self.revising_agent.revise(req, topology, control, eval_result, engineer_review, i, waveform_report=waveform_report)
             progress.done('revision', next_topology=topology.topology, next_arch=control.architecture)
             topology = self._review_step(iter_dir, 'revised_topology', topology)
             control = self._review_step(iter_dir, 'revised_control', control)
@@ -153,11 +200,13 @@ class ACSSOrchestrator:
                 break
 
         evolution_artifacts = self._publish_waveform_evolution(run_dir, records)
+        manual_bundle = self._publish_manual_matlab_bundle(run_dir, records, req)
 
         dump_json(
             run_dir / 'run_summary.json',
             {
                 'requirements': asdict(req),
+                'workflow_mode': 'legacy',
                 'iterations': [
                     {
                         'iteration': r.iteration,
@@ -177,11 +226,244 @@ class ACSSOrchestrator:
                 'final_validation_mode': final_validation_mode,
                 'final_control_code_files': final_artifact_files,
                 'waveform_evolution_files': evolution_artifacts,
+                'manual_matlab_bundle': manual_bundle,
             },
         )
         progress.finish_run(records)
 
         return run_dir
+
+    def _run_layered(self, req: object, run_dir: Path, progress: object) -> Path:
+        parsed_spec = self.spec_parser.parse(req)
+        dump_json(run_dir / 'design_spec.json', to_json_dict(parsed_spec))
+
+        records: list[IterationRecord] = []
+        analysis_history = []
+        workflow_trace: list[dict[str, object]] = []
+        hypothesis_state: HypothesisState | None = None
+        stop_reason: str | None = None
+        forced_strategy: dict[str, object] | None = None
+
+        progress.step('topology', 0, req.max_iterations, 'Selecting topology and initial passives')
+        topology = self.topology_agent.design(req)
+        progress.done('topology', topology=topology.topology)
+        topology = self._review_step(run_dir, 'topology', topology)
+
+        for i in range(req.max_iterations):
+            iter_dir = run_dir / f'iter_{i:02d}'
+            iter_dir.mkdir(parents=True, exist_ok=True)
+            previous_eval = records[-1].evaluation if records else None
+
+            progress.step('generation', i, req.max_iterations, 'Generating strategy/control/payload')
+            sensors, strategy, control, generation = self.controller_generator.generate(
+                req,
+                topology,
+                i,
+                iter_dir,
+                previous_evaluation=previous_eval,
+                strategy_override=forced_strategy,
+            )
+            forced_strategy = None
+            sensors = self._review_step(iter_dir, 'sensors', sensors)
+            strategy = self._review_step(iter_dir, 'control_strategy', strategy)
+            control = self._review_step(iter_dir, 'control', control)
+            progress.done('generation', architecture=str(strategy.get('architecture', '')), payload=Path(generation.payload_path).name)
+
+            progress.step('simulation', i, req.max_iterations, 'Running simulation and visualization')
+            sim, sim_exec = self.simulation_executor.execute(
+                req=req,
+                topology=topology,
+                control=control,
+                payload_path=generation.payload_path,
+                iteration=i,
+                out_dir=iter_dir,
+                use_matlab=self.use_matlab,
+                template_slx=self.template_slx,
+            )
+            sim = self._review_step(iter_dir, 'simulation', sim)
+            progress.done('simulation', mode=sim_exec.mode, validation=sim_exec.validation)
+
+            progress.step('evaluation', i, req.max_iterations, 'Evaluating metrics')
+            eval_result = self.evaluation_agent.evaluate(req, sim, report_dir=iter_dir)
+            eval_result = self._review_step(iter_dir, 'evaluation', eval_result)
+            progress.done('evaluation', passed=eval_result.passed, score=f'{eval_result.score:.2f}')
+
+            progress.step('analysis', i, req.max_iterations, 'Analyzing response and diagnosing failures')
+            analysis = self.response_analyzer.analyze(
+                iteration=i,
+                sim=sim,
+                evaluation=eval_result,
+                execution=sim_exec,
+                iter_dir=iter_dir,
+                architecture=str(strategy.get('architecture', '')),
+                previous=analysis_history[-1] if analysis_history else None,
+            )
+            diagnosis = self.failure_diagnoser.diagnose(analysis, analysis_history)
+            hypothesis_state, decision = self.hypothesis_manager.decide(
+                analysis=analysis,
+                diagnosis=diagnosis,
+                previous_state=hypothesis_state,
+            )
+            analysis_history.append(analysis)
+
+            dump_json(iter_dir / 'analysis_report.json', to_json_dict(analysis))
+            dump_json(iter_dir / 'diagnosis_report.json', to_json_dict(diagnosis))
+            dump_json(iter_dir / 'decision_report.json', to_json_dict(decision))
+
+            engineer_review = self._engineer_review_iteration(
+                iter_dir,
+                i,
+                req,
+                strategy,
+                control,
+                sim,
+                eval_result,
+                diagnosis_report=to_json_dict(diagnosis),
+                decision_report=to_json_dict(decision),
+            )
+
+            final_pass = self._is_iteration_accepted(eval_result, engineer_review)
+            records.append(
+                IterationRecord(
+                    iteration=i,
+                    topology=deepcopy(topology),
+                    sensors=deepcopy(sensors),
+                    strategy=deepcopy(strategy),
+                    control=deepcopy(control),
+                    simulation=deepcopy(sim),
+                    evaluation=deepcopy(eval_result),
+                    engineer_review=deepcopy(engineer_review),
+                )
+            )
+
+            workflow_trace.append(
+                {
+                    'iteration': i,
+                    'analysis': to_json_dict(analysis),
+                    'diagnosis': to_json_dict(diagnosis),
+                    'decision': to_json_dict(decision),
+                    'hypothesis': to_json_dict(hypothesis_state),
+                }
+            )
+
+            dump_json(
+                iter_dir / 'summary.json',
+                {
+                    'iteration': i,
+                    'topology': asdict(topology),
+                    'sensors': asdict(sensors),
+                    'strategy': deepcopy(strategy),
+                    'control': asdict(control),
+                    'simulation': asdict(sim),
+                    'evaluation': asdict(eval_result),
+                    'engineer_review': asdict(engineer_review) if engineer_review else None,
+                    'analysis': to_json_dict(analysis),
+                    'diagnosis': to_json_dict(diagnosis),
+                    'decision': to_json_dict(decision),
+                    'hypothesis': to_json_dict(hypothesis_state),
+                    'iteration_accepted': final_pass,
+                },
+            )
+
+            if final_pass:
+                progress.finish_iteration(i, accepted=True)
+                break
+            progress.finish_iteration(i, accepted=False)
+            if decision.stop_run:
+                stop_reason = decision.rationale
+                break
+            if i >= req.max_iterations - 1:
+                break
+
+            progress.step('revision', i, req.max_iterations, f'Applying action: {decision.action.value}')
+            waveform_report = self._load_waveform_report(iter_dir)
+            topology, req, forced_strategy = self._apply_layered_decision(
+                req=req,
+                topology=topology,
+                control=control,
+                evaluation=eval_result,
+                engineer_review=engineer_review,
+                iteration=i,
+                decision_action=decision.action,
+                waveform_report=waveform_report,
+            )
+            progress.done('revision', next_topology=topology.topology, action=decision.action.value)
+
+        final_artifact_files: list[str] = []
+        final_validation_mode = 'none'
+        for r in records:
+            if self._is_iteration_accepted(r.evaluation, r.engineer_review):
+                final_artifact_files = self._publish_final_control_code(run_dir, r)
+                final_validation_mode = str(r.simulation.raw.get('mode', 'unknown'))
+                break
+
+        evolution_artifacts = self._publish_waveform_evolution(run_dir, records)
+        manual_bundle = self._publish_manual_matlab_bundle(run_dir, records, req)
+        dump_json(run_dir / 'workflow_trace.json', {'trace': workflow_trace, 'stop_reason': stop_reason})
+        dump_json(
+            run_dir / 'run_summary.json',
+            {
+                'requirements': asdict(req),
+                'workflow_mode': 'layered',
+                'iterations': [
+                    {
+                        'iteration': r.iteration,
+                        'topology': asdict(r.topology),
+                        'sensors': asdict(r.sensors),
+                        'strategy': deepcopy(r.strategy),
+                        'control': asdict(r.control),
+                        'simulation': asdict(r.simulation),
+                        'evaluation': asdict(r.evaluation),
+                        'engineer_review': asdict(r.engineer_review) if r.engineer_review else None,
+                        'iteration_accepted': self._is_iteration_accepted(r.evaluation, r.engineer_review),
+                    }
+                    for r in records
+                ],
+                'final_passed': self._is_iteration_accepted(records[-1].evaluation, records[-1].engineer_review) if records else False,
+                'final_score': records[-1].evaluation.score if records else 0.0,
+                'final_validation_mode': final_validation_mode,
+                'final_control_code_files': final_artifact_files,
+                'waveform_evolution_files': evolution_artifacts,
+                'manual_matlab_bundle': manual_bundle,
+                'stop_reason': stop_reason,
+            },
+        )
+        progress.finish_run(records)
+        return run_dir
+
+    def _apply_layered_decision(
+        self,
+        *,
+        req,
+        topology,
+        control,
+        evaluation,
+        engineer_review,
+        iteration: int,
+        decision_action: NextAction,
+        waveform_report: dict | None = None,
+    ):
+        forced_strategy: dict[str, object] | None = None
+        if decision_action == NextAction.RETUNE_PARAMETERS:
+            prev_kp = control.kp
+            prev_ki = control.ki
+            topology, control = self.tuning_agent.tune(req, topology, control, evaluation=evaluation, waveform_report=waveform_report)
+            if math.isclose(control.kp, prev_kp) and math.isclose(control.ki, prev_ki):
+                topology, control = self.revising_agent.revise(req, topology, control, evaluation, engineer_review, iteration, waveform_report=waveform_report)
+            req.control_design_notes = f"{(req.control_design_notes or '').strip()} Retune parameter loop gains.".strip()
+            return topology, req, forced_strategy
+        if decision_action == NextAction.PATCH_IMPLEMENTATION:
+            topology, control = self.revising_agent.revise(req, topology, control, evaluation, engineer_review, iteration, waveform_report=waveform_report)
+            req.control_design_notes = f"{(req.control_design_notes or '').strip()} Patch implementation and interface mismatches.".strip()
+            return topology, req, forced_strategy
+        if decision_action == NextAction.SWITCH_CONTROLLER_ARCHITECTURE:
+            req.control_design_notes = (
+                f"{(req.control_design_notes or '').strip()} "
+                "Switch controller architecture; prioritize structure change over gain-only tuning."
+            ).strip()
+            forced_strategy = self.control_strategy_agent.choose(req, topology, iteration + 1, evaluation)
+            return topology, req, forced_strategy
+        return topology, req, forced_strategy
 
     def _publish_final_control_code(self, run_dir: Path, record: IterationRecord) -> list[str]:
         if not record.simulation.code_files:
@@ -256,6 +538,140 @@ class ACSSOrchestrator:
         svg_path.write_text(_render_evolution_svg(curves), encoding='utf-8')
         return [str(json_path), str(svg_path)]
 
+    def _publish_manual_matlab_bundle(self, run_dir: Path, records: list[IterationRecord], req: object) -> dict[str, object]:
+        if not records:
+            return {}
+
+        selected = records[-1]
+        iter_dir = run_dir / f'iter_{selected.iteration:02d}'
+        bundle_dir = run_dir / 'manual_matlab_package'
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+
+        copied_files: list[str] = []
+
+        def _copy_if_exists(src: Path, dst_name: str | None = None) -> None:
+            if not src.exists():
+                return
+            dst = bundle_dir / (dst_name or src.name)
+            shutil.copy2(src, dst)
+            copied_files.append(str(dst))
+
+        _copy_if_exists(iter_dir / 'model_payload.json')
+        _copy_if_exists(iter_dir / 'acss_params.m')
+        _copy_if_exists(iter_dir / 'topology_template_info.json')
+
+        wrapper_candidates: list[Path] = []
+        for code_file in selected.simulation.code_files:
+            code_path = Path(code_file)
+            _copy_if_exists(code_path)
+            if code_path.suffix.lower() == '.c':
+                wrapper_candidates.append(code_path)
+
+        # The simulation agent now generates both control_sfunc_wrapper.c
+        # (control law) and control_sfunc.c (MEX glue) as separate files with
+        # distinct roles, so both are already included via code_files above.
+        # No legacy alias copy needed.
+
+        if self.template_slx is not None and self.template_slx.exists():
+            _copy_if_exists(self.template_slx, 'topology_template.slx')
+        _copy_if_exists(Path('matlab') / 'acss_build_and_run.m')
+
+        run_script = bundle_dir / 'run_manual_matlab.m'
+        run_script.write_text(
+            textwrap.dedent(
+                f"""\
+                % Auto-generated ACSS MATLAB handoff script.
+                % Run this script from MATLAB to execute the generated iteration manually.
+                addpath(pwd);
+                payload_path = fullfile(pwd, 'model_payload.json');
+                out_json = fullfile(pwd, 'manual_matlab_result.json');
+                template_slx = fullfile(pwd, 'topology_template.slx');
+                acss_build_and_run(payload_path, out_json, template_slx);
+                disp(['ACSS manual run complete. Result: ', out_json]);
+                """
+            ),
+            encoding='utf-8',
+        )
+        copied_files.append(str(run_script))
+
+        # setup.m — load workspace variables and compile the S-Function MEX so
+        # the user can open topology_template.slx and click Run immediately.
+        c_files = [Path(f).name for f in selected.simulation.code_files if f.endswith('.c')]
+        mex_args = ', '.join(f"'{n}'" for n in c_files)
+        setup_script = bundle_dir / 'setup.m'
+        setup_script.write_text(
+            textwrap.dedent(
+                f"""\
+                % ACSS setup script — run this once before opening the Simulink model.
+                % It loads controller parameters into the workspace and compiles the
+                % S-Function MEX so you can open topology_template.slx and click Run.
+
+                addpath(pwd);
+
+                % Load generated parameters into base workspace.
+                [par, ctrl] = acss_params();
+                assignin('base', 'par', par);
+                assignin('base', 'ctrl', ctrl);
+                disp('Parameters loaded:');
+                disp(ctrl);
+
+                % Compile S-Function MEX (only needed when C files change).
+                inc = fullfile(matlabroot, 'simulink', 'include');
+                disp('Compiling S-Function...');
+                mex(['-I' inc], {mex_args});
+                disp('Done. Open topology_template.slx and click Run.');
+                """
+            ),
+            encoding='utf-8',
+        )
+        copied_files.append(str(setup_script))
+
+        readme_path = bundle_dir / 'README.txt'
+        readme_path.write_text(
+            textwrap.dedent(
+                f"""\
+                ACSS Manual MATLAB Package
+                =========================
+                Source run: {run_dir}
+                Source iteration: {selected.iteration}
+                Requirements: {getattr(req, 'name', '')}
+
+                Contents:
+                - model_payload.json       design decisions
+                - acss_params.m            generated controller parameters
+                - control_sfunc.c          S-Function MEX glue
+                - control_sfunc_wrapper.c  generated control law (C)
+                - topology_template.slx    Simulink model
+                - setup.m                  loads workspace + compiles MEX
+                - run_manual_matlab.m      headless batch run + result JSON
+                - acss_build_and_run.m     MATLAB runner used by ACSS
+
+                Interactive Simulink workflow (recommended):
+                1. Open MATLAB and set current folder to this directory.
+                2. Run:
+                      run('setup.m')
+                3. Open the model:
+                      open_system('topology_template.slx')
+                4. Click Run (Play button) in Simulink.
+                   Scopes inside the model will show live waveforms.
+                   Use Simulation Data Inspector (Ctrl+Shift+I) after the run
+                   to zoom, compare, and export signals.
+
+                Headless batch workflow:
+                   run('run_manual_matlab.m')
+                   -> writes manual_matlab_result.json in this folder
+                """
+            ),
+            encoding='utf-8',
+        )
+        copied_files.append(str(readme_path))
+
+        return {
+            'path': str(bundle_dir),
+            'source_iteration': selected.iteration,
+            'files': copied_files,
+        }
+
     def _review_step(self, base_dir: Path, step_name: str, data: object) -> object:
         if not self.human_review:
             return data
@@ -293,6 +709,8 @@ class ACSSOrchestrator:
         control: object,
         sim: object,
         evaluation: object,
+        diagnosis_report: dict[str, object] | None = None,
+        decision_report: dict[str, object] | None = None,
     ) -> EngineerReview | None:
         if not self.human_review:
             return None
@@ -317,6 +735,8 @@ class ACSSOrchestrator:
             'control': to_dict(control),
             'simulation_metrics': getattr(sim, 'metrics', {}),
             'knowledge_refs': _extract_knowledge_refs(strategy, control),
+            'diagnosis': diagnosis_report,
+            'decision': decision_report,
             'engineer_review': asdict(review),
         }
         dump_json(review_path, packet)
@@ -336,6 +756,18 @@ class ACSSOrchestrator:
                 dump_json(review_path, {**payload, 'engineer_review': asdict(review)})
                 return review
             print("Invalid choice. Use 'e' after editing the review JSON, or 'q' to abort.")
+
+    def _load_waveform_report(self, iter_dir: Path) -> dict | None:
+        """Load the evaluation_report.json waveform_harness section for revision agents."""
+        report_path = iter_dir / 'evaluation_report.json'
+        if not report_path.exists():
+            return None
+        try:
+            payload = json.loads(report_path.read_text(encoding='utf-8'))
+            harness = payload.get('waveform_harness')
+            return harness if isinstance(harness, dict) else None
+        except Exception:
+            return None
 
     def _is_iteration_accepted(self, evaluation: object, engineer_review: EngineerReview | None) -> bool:
         auto_passed = bool(getattr(evaluation, 'passed', False))
@@ -471,12 +903,13 @@ class _ProgressReporter:
     def __init__(self, max_iterations: int) -> None:
         self.max_iterations = max_iterations
 
-    def start_run(self, name: str, run_dir: Path, template_slx: Path, use_matlab: bool) -> None:
+    def start_run(self, name: str, run_dir: Path, template_slx: Path, use_matlab: bool, workflow_mode: str) -> None:
         mode = 'matlab' if use_matlab else 'synthetic'
         print(f'[run] Starting ACSS for {name}')
         print(f'[run] Output: {run_dir}')
         print(f'[run] Template: {template_slx}')
         print(f'[run] Validation mode: {mode}')
+        print(f'[run] Workflow mode: {workflow_mode}')
 
     def step(self, step_name: str, iteration: int, total_iterations: int, message: str) -> None:
         prefix = self._prefix(iteration, total_iterations)

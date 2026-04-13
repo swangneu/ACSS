@@ -1,10 +1,42 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-import os
 
+from src.agents._topology_meta import TOPOLOGY_ALLOWLIST, is_resonant, is_isolated
 from src.contracts import RequirementSpec, TopologyDesign
 from src.llm import DeepSeekClient
+
+_TOPOLOGY_LIST = ", ".join(TOPOLOGY_ALLOWLIST)
+
+_SYSTEM_PROMPT = f"""You are a power electronics topology assistant.
+Return JSON only with keys: topology, inductor_uH, capacitor_uF, switches, turns_ratio.
+
+Allowed topology values:
+  DC-DC non-isolated (PWM duty-cycle control):
+    buck, boost, buck_boost, sepic, cuk
+  DC-DC isolated (PWM duty-cycle control):
+    flyback, forward, push_pull, half_bridge, full_bridge, psfb, dab
+  DC-DC resonant (switching-FREQUENCY control — NOT duty cycle):
+    llc_resonant, lcc_resonant, src, cllc_resonant
+  AC-DC rectifiers / PFC:
+    pfc, pfc_totem_pole, vienna
+  DC-AC inverters:
+    inverter_3ph, inverter_1ph, inverter_3ph_npc, inverter_3ph_t_type
+
+Field guidance:
+- inductor_uH : main filter or magnetising inductance in µH (use 0 if not applicable)
+- capacitor_uF: main output filter capacitance in µF (use 0 if not applicable)
+- switches     : number of active switches (MOSFETs / IGBTs) in the power stage
+- turns_ratio  : primary-to-secondary transformer turns ratio (use 1.0 for non-isolated)
+
+For resonant converters (llc_resonant, lcc_resonant, src, cllc_resonant):
+  inductor_uH is the resonant inductance Lr; capacitor_uF is the resonant capacitance Cr.
+  Control will be performed by varying the switching frequency, not the duty cycle.
+
+For isolated converters (flyback, forward, push_pull, half_bridge, full_bridge, psfb, dab):
+  Set turns_ratio to the primary:secondary ratio that achieves the target output voltage
+  (e.g. turns_ratio=4.0 means Vin/4 ≈ Vout at 50 % duty cycle for a forward converter).
+"""
 
 
 class TopologyAgent:
@@ -12,63 +44,33 @@ class TopologyAgent:
         self.client = DeepSeekClient()
 
     def design(self, req: RequirementSpec) -> TopologyDesign:
-        if self.client.enabled:
-            try:
-                llm_result = self._design_with_llm(req)
-                return TopologyDesign(
-                    topology=str(llm_result['topology']),
-                    inductor_uH=float(llm_result['inductor_uH']),
-                    capacitor_uF=float(llm_result['capacitor_uF']),
-                    switches=int(llm_result['switches']),
-                )
-            except Exception:
-                if os.getenv('DEEPSEEK_DEBUG', '').strip() == '1':
-                    print('TopologyAgent: DeepSeek call failed, using rule-based fallback')
-                # Safe fallback for offline and malformed model outputs.
-                pass
-
-        return self._design_rule_based(req)
-
-    def _design_rule_based(self, req: RequirementSpec) -> TopologyDesign:
-        preferred = (req.preferred_topology or '').strip().lower()
-        inferred_from_name = 'inverter_3ph' if 'inverter' in req.name.lower() else ''
-        explicit = preferred or inferred_from_name
-
-        if explicit == 'inverter_3ph':
-            # Coarse L-C filter placeholders for an initial inverter iteration.
-            l_uH = max(50.0, (req.vout_target_v / max(req.fsw_hz, 1.0)) * 1e6 * 0.2)
-            c_uF = max(10.0, (req.pout_w / max(req.vout_target_v, 1.0)) * 2.0)
-            return TopologyDesign(topology='inverter_3ph', inductor_uH=l_uH, capacitor_uF=c_uF, switches=6)
-
-        ratio = req.vout_target_v / req.vin_nominal_v
-        if ratio < 0.85:
-            topology = 'buck'
-        elif ratio > 1.15:
-            topology = 'boost'
-        else:
-            topology = 'buck_boost'
-
-        # Coarse initial sizing heuristics for bootstrap simulation.
-        l_uH = max(10.0, (req.vout_target_v / max(req.fsw_hz, 1.0)) * 1e6 * 0.04)
-        c_uF = max(47.0, (req.pout_w / max(req.vout_target_v, 1.0)) * 20.0)
-        switches = 1 if topology in {'buck', 'boost'} else 2
-
-        return TopologyDesign(topology=topology, inductor_uH=l_uH, capacitor_uF=c_uF, switches=switches)
+        if not self.client.enabled:
+            raise RuntimeError('DeepSeek API key is required for TopologyAgent in LLM-only mode.')
+        llm_result = self._design_with_llm(req)
+        topology = str(llm_result['topology']).strip().lower()
+        return TopologyDesign(
+            topology=topology,
+            inductor_uH=float(llm_result.get('inductor_uH', 0.0)),
+            capacitor_uF=float(llm_result.get('capacitor_uF', 0.0)),
+            switches=int(llm_result.get('switches', 1)),
+            turns_ratio=float(llm_result.get('turns_ratio', 1.0)),
+            resonant=is_resonant(topology),
+        )
 
     def _design_with_llm(self, req: RequirementSpec) -> dict[str, object]:
-        system_prompt = (
-            "You are a power electronics topology assistant. "
-            "Return JSON only with keys: topology, inductor_uH, capacitor_uF, switches. "
-            "Allowed topology values: buck, boost, buck_boost, inverter_3ph."
-        )
         user_prompt = (
             "Given this requirement object, propose a practical initial topology and passive sizing "
             "for a first simulation iteration.\n"
             f"Design intent prompt: {req.design_prompt}\n"
             f"{asdict(req)}"
         )
-        data = self.client.complete_json(system_prompt, user_prompt, temperature=0.1)
+        data = self.client.complete_json(_SYSTEM_PROMPT, user_prompt, temperature=0.1)
         required = {'topology', 'inductor_uH', 'capacitor_uF', 'switches'}
         if not required.issubset(data.keys()):
             raise ValueError('LLM topology response missing required fields')
+        if data['topology'] not in TOPOLOGY_ALLOWLIST:
+            raise ValueError(
+                f"LLM returned unrecognised topology '{data['topology']}'. "
+                f"Allowed: {_TOPOLOGY_LIST}"
+            )
         return data

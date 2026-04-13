@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from dataclasses import asdict
 
+from src.agents._topology_meta import (
+    FAMILY_ARCHITECTURES,
+    power_stage_family,
+    is_resonant,
+)
 from src.contracts import EvaluationResult, RequirementSpec, TopologyDesign
 from src.llm import DeepSeekClient
 from src.rag import LocalKnowledgeBase, extract_references, format_retrieved_context
@@ -19,111 +24,11 @@ class ControlStrategyAgent:
         iteration: int,
         previous_evaluation: EvaluationResult | None = None,
     ) -> dict[str, object]:
+        if not self.client.enabled:
+            raise RuntimeError('DeepSeek API key is required for ControlStrategyAgent in LLM-only mode.')
         context = self._retrieve_context(req, topology, previous_evaluation)
-        if self.client.enabled:
-            try:
-                decision = self._choose_with_llm(req, topology, iteration, previous_evaluation, context)
-                return self._attach_context(decision, context)
-            except Exception:
-                pass
-        decision = self._choose_rule_based(req, topology, iteration, previous_evaluation)
+        decision = self._choose_with_llm(req, topology, iteration, previous_evaluation, context)
         return self._attach_context(decision, context)
-
-    def _choose_rule_based(
-        self,
-        req: RequirementSpec,
-        topology: TopologyDesign,
-        iteration: int,
-        previous_evaluation: EvaluationResult | None = None,
-    ) -> dict[str, object]:
-        notes = f"{req.design_prompt} {req.control_design_notes or ''}".lower()
-        name = req.name.lower()
-
-        if 'pfc' in name or 'rectifier' in name or 'pfc' in notes:
-            return {
-                'controller': 'pfc_dual_loop',
-                'architecture': 'pfc_current_mode',
-                'current_loop_enabled': True,
-                'inrush_control': 'active_current_limit',
-                'secondary_controller': 'voltage_outer_loop',
-                'rationale': ['PFC/rectifier keywords detected'],
-            }
-
-        if topology.topology == 'inverter_3ph':
-            if 'aho' in notes and 'voc' in notes:
-                return {
-                    'controller': 'voc_aho_grid_forming',
-                    'architecture': 'voc_aho',
-                    'current_loop_enabled': True,
-                    'inrush_control': 'active_current_limit',
-                    'secondary_controller': 'dq_current_inner',
-                    'rationale': ['Requested AHO-based VOC preference'],
-                }
-            if req.weak_grid_mode or 'vsg' in notes:
-                return {
-                    'controller': 'vsg_grid_forming',
-                    'architecture': 'vsg',
-                    'current_loop_enabled': True,
-                    'inrush_control': 'active_current_limit',
-                    'secondary_controller': 'dq_current_inner',
-                    'rationale': ['Weak-grid/VSG preference'],
-                }
-            if 'voc' in notes:
-                return {
-                    'controller': 'voc_grid_forming',
-                    'architecture': 'voc',
-                    'current_loop_enabled': True,
-                    'inrush_control': 'active_current_limit',
-                    'secondary_controller': 'dq_current_inner',
-                    'rationale': ['VOC preference'],
-                }
-            if req.grid_connected or 'droop' in notes:
-                return {
-                    'controller': 'droop_grid_support',
-                    'architecture': 'droop',
-                    'current_loop_enabled': True,
-                    'inrush_control': 'active_current_limit',
-                    'secondary_controller': 'dq_current_inner',
-                    'rationale': ['Grid-connected support with droop'],
-                }
-            return {
-                'controller': 'dq_current_voltage_loop',
-                'architecture': 'dq',
-                'current_loop_enabled': True,
-                'inrush_control': 'active_current_limit' if (req.inrush_limit_a is not None or req.load_step_pct) else 'none',
-                'secondary_controller': 'none',
-                'rationale': ['Default inverter dq strategy'],
-            }
-
-        if 'current mode' in notes or 'current-mode' in notes or 'cascaded' in notes:
-            return {
-                'controller': 'pi_current_mode',
-                'architecture': 'cascaded',
-                'current_loop_enabled': True,
-                'inrush_control': 'active_current_limit',
-                'secondary_controller': 'voltage_outer_loop',
-                'rationale': ['Requested by design/revision notes'],
-            }
-
-        # Escalate for repeated non-passing iterations.
-        if previous_evaluation is not None and not previous_evaluation.passed and iteration >= 2:
-            return {
-                'controller': 'pi_current_mode',
-                'architecture': 'cascaded',
-                'current_loop_enabled': True,
-                'inrush_control': 'active_current_limit',
-                'secondary_controller': 'voltage_outer_loop',
-                'rationale': ['Escalated from plain PI after failed iterations'],
-            }
-
-        return {
-            'controller': 'pi_voltage_loop',
-            'architecture': 'pi',
-            'current_loop_enabled': False,
-            'inrush_control': 'none',
-            'secondary_controller': 'none',
-            'rationale': ['Default converter PI strategy'],
-        }
 
     def _choose_with_llm(
         self,
@@ -133,15 +38,29 @@ class ControlStrategyAgent:
         previous_evaluation: EvaluationResult | None,
         retrieved_context: object,
     ) -> dict[str, object]:
+        fam = power_stage_family(topology.topology)
+        allowed_archs = FAMILY_ARCHITECTURES.get(fam, ['pi'])
+        arch_constraint = (
+            f"For this topology family ({fam}), ONLY use these architectures: {', '.join(allowed_archs)}. "
+            "Do NOT suggest architectures from other families."
+        )
+        resonant_note = (
+            "IMPORTANT: This is a resonant converter. The control output is switching FREQUENCY, "
+            "not duty cycle. Select llc_freq_control, pll_freq_control, or burst_mode."
+        ) if is_resonant(topology.topology) else ""
+
         system_prompt = (
             "You are a power-electronics control strategy selector. "
             "Pick the control structure (not gains). Return JSON only with keys: "
             "controller, architecture, current_loop_enabled, inrush_control, secondary_controller, rationale. "
-            "inrush_control must be one of: none, active_current_limit, soft_start_ramp."
+            "inrush_control must be one of: none, active_current_limit, soft_start_ramp.\n"
+            f"{arch_constraint}\n"
+            f"{resonant_note}"
         )
         user_prompt = (
             f"requirements={asdict(req)}\n"
             f"topology={asdict(topology)}\n"
+            f"topology_family={fam}\n"
             f"iteration={iteration}\n"
             f"previous_evaluation={asdict(previous_evaluation) if previous_evaluation else None}\n"
             f"design_prompt={req.design_prompt}\n"
@@ -168,7 +87,7 @@ class ControlStrategyAgent:
             query,
             topic='strategy',
             topology=topology.topology,
-            power_stage_family=_power_stage_family(topology.topology),
+            power_stage_family=power_stage_family(topology.topology),
             control_objective=_control_objective(req, topology.topology),
             operating_mode=_operating_mode(req),
             revision_trigger=_revision_trigger(previous_evaluation),
@@ -206,24 +125,14 @@ def _strategy_tags(req: RequirementSpec, previous_evaluation: EvaluationResult |
     return tags
 
 
-def _power_stage_family(topology: str) -> str:
-    mapping = {
-        'buck': 'dc_dc_nonisolated',
-        'boost': 'dc_dc_nonisolated',
-        'buck_boost': 'dc_dc_nonisolated',
-        'inverter_3ph': 'dc_ac_inverter',
-        'inverter_1ph': 'dc_ac_inverter',
-        'pfc': 'ac_dc_rectifier',
-    }
-    return mapping.get(topology.strip().lower(), '')
-
-
 def _control_objective(req: RequirementSpec, topology: str) -> str:
-    top = topology.strip().lower()
-    if top == 'pfc':
+    fam = power_stage_family(topology)
+    if fam == 'ac_dc_rectifier':
         return 'power_factor_correction'
-    if 'inverter' in top:
+    if fam == 'dc_ac_inverter':
         return 'grid_forming' if req.weak_grid_mode else 'grid_following'
+    if fam == 'dc_dc_resonant':
+        return 'voltage_regulation'   # achieved via frequency control
     return 'voltage_regulation'
 
 
@@ -237,15 +146,20 @@ def _operating_mode(req: RequirementSpec) -> str:
 
 def _plant_features(req: RequirementSpec, topology: str) -> list[str]:
     features: list[str] = []
+    fam = power_stage_family(topology)
     top = topology.strip().lower()
     if req.weak_grid_mode:
         features.append('weak_grid')
-    if req.grid_connected and 'inverter' in top:
+    if req.grid_connected and fam == 'dc_ac_inverter':
         features.append('grid_synchronization')
     if req.load_step_pct is not None:
         features.append('load_transient')
-    if top == 'pfc':
+    if fam == 'ac_dc_rectifier':
         features.append('line_frequency_envelope')
+    if fam == 'dc_dc_resonant':
+        features.append('soft_switching')
+    if top in {'inverter_3ph_npc', 'inverter_3ph_t_type'}:
+        features.append('neutral_point_balance')
     return features
 
 

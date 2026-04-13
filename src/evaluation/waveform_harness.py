@@ -35,6 +35,7 @@ def evaluate_waveform_files(req: RequirementSpec, waveform_files: list[str]) -> 
         return report
 
     time_s, vout_v = _extract_waveform(payload)
+    is_ac_output = all(isinstance(payload.get(k), list) for k in ('va_v', 'vb_v', 'vc_v'))
     if len(time_s) < 10 or len(vout_v) < 10 or len(time_s) != len(vout_v):
         _add_check(
             report,
@@ -58,7 +59,10 @@ def evaluate_waveform_files(req: RequirementSpec, waveform_files: list[str]) -> 
     tail_abs_mean = _mean([abs(v) for v in tail])
     tail_rms = _rms(tail)
     tail_pp = (max(tail) - min(tail)) if tail else float('nan')
-    steady_state_abs_error_pct = abs(tail_mean - target) / abs_target * 100.0
+    # For AC inverter outputs (envelope signal), use tail_rms for robustness
+    # against small imbalance artifacts; for DC outputs, use tail_mean.
+    tail_representative = tail_rms if is_ac_output else tail_mean
+    steady_state_abs_error_pct = abs(tail_representative - target) / abs_target * 100.0
     overshoot_pct = max(0.0, (max(vout_v) - target) / abs_target * 100.0)
     undershoot_pct = max(0.0, (target - min(vout_v)) / abs_target * 100.0)
     settling_time_ms = _settling_time_ms(time_s, vout_v, target, tol=0.02)
@@ -67,9 +71,11 @@ def evaluate_waveform_files(req: RequirementSpec, waveform_files: list[str]) -> 
     report['computed'] = {
         'samples': samples,
         'duration_ms': duration_ms,
+        'is_ac_output': is_ac_output,
         'tail_mean_v': tail_mean,
         'tail_abs_mean_v': tail_abs_mean,
         'tail_rms_v': tail_rms,
+        'tail_representative_v': tail_representative,
         'tail_pp_v': tail_pp,
         'steady_state_abs_error_pct': steady_state_abs_error_pct,
         'overshoot_pct_waveform': overshoot_pct,

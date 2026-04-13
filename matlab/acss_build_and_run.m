@@ -36,6 +36,16 @@ if ~isfolder(cacheDir), mkdir(cacheDir); end
 if ~isfolder(codegenDir), mkdir(codegenDir); end
 Simulink.fileGenControl('set', 'CacheFolder', cacheDir, 'CodeGenFolder', codegenDir, 'createDir', true);
 
+% Delete stale MEX binaries in the run directory so any changed C source
+% is recompiled from scratch rather than reusing a failed or outdated build.
+stale_mex = dir(fullfile(runDir, 'control_sfunc.*'));
+for k = 1:numel(stale_mex)
+    [~, ~, ext] = fileparts(stale_mex(k).name);
+    if startsWith(ext, '.mex') || strcmp(ext, '.obj') || strcmp(ext, '.o')
+        delete(fullfile(runDir, stale_mex(k).name));
+    end
+end
+
 if ~isempty(templateSlxPath) && isfile(templateSlxPath)
     modelPath = templateSlxPath;
 elseif isfield(payload, 'topology') && isfield(payload.topology, 'topology') && strcmp(string(payload.topology.topology), "inverter_3ph")
@@ -98,6 +108,17 @@ try
 
     wf.time_s = t(:);
     wf.vout_v = vout(:);
+    % Also save per-phase voltages when available so the waveform harness
+    % can use AC-aware steady-state evaluation (tail_rms instead of tail_mean).
+    [~, va] = pick_signal(simOut, {'va','v_a','phase_a'});
+    [~, vb] = pick_signal(simOut, {'vb','v_b','phase_b'});
+    [~, vc] = pick_signal(simOut, {'vc','v_c','phase_c'});
+    if ~isempty(va) && ~isempty(vb) && ~isempty(vc)
+        n = min([numel(va), numel(vb), numel(vc), numel(t)]);
+        wf.va_v = va(1:n);
+        wf.vb_v = vb(1:n);
+        wf.vc_v = vc(1:n);
+    end
     fidW = fopen(waveformFile, 'w');
     fprintf(fidW, '%s', jsonencode(wf));
     fclose(fidW);

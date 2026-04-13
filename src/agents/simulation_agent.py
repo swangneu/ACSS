@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from dataclasses import asdict
 
+from src.agents._topology_meta import power_stage_family, is_resonant, is_isolated, is_inverter
 from src.contracts import ControlDesign, RequirementSpec, SimulationResult, TopologyDesign, dump_json
 from src.matlab_bridge import run_matlab_stub
 from src.sim.pyspice_backend import run_pyspice_buck
@@ -44,6 +45,7 @@ class SimulationAgent:
                 resolved_values,
                 unresolved_symbols,
                 template_path.name,
+                topology=topology,
             ),
             encoding='utf-8',
         )
@@ -69,6 +71,20 @@ class SimulationAgent:
             encoding='utf-8',
         )
 
+        # When the template's SFunctionModules field names the wrapper file
+        # (e.g. control_sfunc_wrapper.c), MATLAB also expects the MEX glue file
+        # (control_sfunc.c) that declares the wrapper functions as extern and
+        # implements the standard S-Function callbacks.  Generate it alongside
+        # the wrapper so both files are present for compilation.
+        sfun_glue_path: Path | None = None
+        if module_name.endswith('_wrapper.c'):
+            glue_name = module_name[: -len('_wrapper.c')] + '.c'
+            sfun_glue_path = out_dir / glue_name
+            sfun_glue_path.write_text(
+                _render_sfun_glue_c(sfun_name, input_width, output_width, module_name),
+                encoding='utf-8',
+            )
+
         template_meta_path = out_dir / 'topology_template_info.json'
         if template_info:
             dump_json(
@@ -90,6 +106,8 @@ class SimulationAgent:
             )
 
         code_files = [str(params_m_path), str(sfunc_wrapper_path)]
+        if sfun_glue_path is not None:
+            code_files.append(str(sfun_glue_path))
 
         if use_matlab:
             print(f'[simulation] MATLAB requested for {payload_path.name}; writing logs under {out_dir}', flush=True)
@@ -132,29 +150,19 @@ class SimulationAgent:
                 print('[simulation] PySpice backend requested but unavailable; using synthetic fallback', flush=True)
 
         # Synthetic fallback for environments without MATLAB.
-        ratio = req.vout_target_v / max(req.vin_nominal_v, 1e-9)
-        topology_bonus = 1.0 if ((ratio < 1 and topology.topology == 'buck') or (ratio > 1 and topology.topology == 'boost')) else 0.92
-        ctrl_gain = min(1.2, 0.7 + control.kp * 12)
-
-        overshoot = max(0.5, 8.0 / max(ctrl_gain, 0.1)) / topology_bonus
-        settling = max(0.3, 5.0 / max(ctrl_gain, 0.1)) / topology_bonus
-        ripple = max(0.01, 0.12 * (100.0 / max(topology.capacitor_uF, 1.0)))
-        eff = min(99.0, 89.0 + 4.5 * topology_bonus + math.log10(max(topology.inductor_uH, 1.0)))
-
-        metrics = {
-            'overshoot_pct': round(overshoot, 3),
-            'settling_time_ms': round(settling, 3),
-            'ripple_v_pp': round(ripple, 4),
-            'efficiency_pct': round(eff, 3),
-        }
-
         time_s = [i * 1e-4 for i in range(200)]
-        if topology.topology == 'inverter_3ph':
+        fam = power_stage_family(topology.topology)
+        if fam == 'dc_ac_inverter':
             waveforms = _build_inverter_waveforms(req, topology, control, time_s)
+        elif fam == 'dc_dc_resonant':
+            waveforms = _build_resonant_waveforms(req, topology, control, time_s)
         else:
             waveforms = _build_buck_waveforms(req, topology, control, time_s)
         wf_path = out_dir / 'waveforms.json'
         dump_json(wf_path, waveforms)
+
+        # Derive metrics from the generated waveform (not disconnected heuristics).
+        metrics = _metrics_from_waveform(waveforms, req, topology)
         image_files = _export_waveform_images([str(wf_path)], out_dir)
 
         raw = {
@@ -185,6 +193,7 @@ def _render_params_m(
     resolved_values: dict[str, float],
     unresolved_symbols: list[str],
     template_name: str,
+    topology: TopologyDesign | None = None,
 ) -> str:
     symbols = template_symbols if template_symbols else sorted(resolved_values.keys())
     lines = [
@@ -209,10 +218,16 @@ def _render_params_m(
             f"ctrl.inrush_control = '{control.inrush_control}';",
             f"ctrl.inrush_limit_a = {control.inrush_limit_a:.12g};",
             f"ctrl.secondary_controller = '{control.secondary_controller}';",
-            "end",
-            "",
         ]
     )
+    # Extra fields for isolated and resonant topologies.
+    if topology is not None:
+        if topology.turns_ratio != 1.0 or is_isolated(topology.topology):
+            lines.append(f"ctrl.turns_ratio = {topology.turns_ratio:.12g};")
+        if topology.resonant or is_resonant(topology.topology):
+            lines.append(f"ctrl.fsw_nom = {req.fsw_hz:.12g};")
+            lines.append(f"ctrl.resonant = 1;")
+    lines.extend(["end", ""])
     return "\n".join(lines)
 
 
@@ -372,8 +387,68 @@ def _render_wrapper_c(
         "  (void)iin;\n"
         "  (void)iout;\n"
     )
-    input_block = inverter_input_block if topology_kind == 'inverter_3ph' else buck_input_block
-    control_branch = inverter_branch if topology_kind == 'inverter_3ph' else buck_branch
+    # Cascaded (two-loop) buck/boost: outer voltage → inner current.
+    # Uses two integrators: g_integrator (voltage loop) + g_iloop_integrator (current loop).
+    iloop_integrator = f"g_iloop_integrator_{sfun_name}"
+    buck_cascaded_branch = (
+        f"  static real_T {iloop_integrator} = 0.0;\n"
+        "  /* Outer voltage loop */\n"
+        "  const real_T i_ref = kp * err + ki * g_integrator_" + sfun_name + ";\n"
+        "  /* Inner current loop (kp_i = kp * 5, ki_i = ki * 2 as first approximation) */\n"
+        "  const real_T i_err = i_ref - iout;\n"
+        f"  real_T duty = (kp * 5.0) * i_err + (ki * 2.0) * {iloop_integrator};\n"
+        f"  {iloop_integrator} += i_err * ts;\n"
+        "  if (duty < 0.0) duty = 0.0;\n"
+        "  if (duty > 1.0) duty = 1.0;\n"
+        "  if (out_w > 0) y0[0] = duty;\n"
+        "  if (out_w > 1) y0[1] = 1.0 - duty;\n"
+        "  {\n"
+        "    int_T k;\n"
+        "    for (k = 2; k < out_w; ++k) y0[k] = 0.0;\n"
+        "  }\n"
+        "  (void)vin;\n"
+        "  (void)iin;\n"
+    )
+    # Isolated DC-DC (flyback/forward/HB/FB): same as buck but compensates turns ratio.
+    # turns_ratio is baked into vref scaling; the template must reflect secondary voltage.
+    isolated_input_block = buck_input_block  # same signal names; template handles turns ratio
+    isolated_branch = buck_branch            # duty-cycle control identical to buck
+    # Resonant converters: control output is switching frequency offset (Hz), not duty cycle.
+    resonant_input_block = (
+        "  const real_T vout = (in_w > 0) ? u0[0] : 0.0;\n"
+        "  const real_T err = vref - vout;\n"
+    )
+    resonant_branch = (
+        "  /* Frequency controller: output is f_sw offset in Hz from nominal */\n"
+        "  real_T f_offset = kp * err + ki * g_integrator_" + sfun_name + ";\n"
+        f"  const real_T fsw_nom = {fsw_hz:.12g};\n"
+        "  real_T f_sw = fsw_nom + f_offset;\n"
+        "  if (f_sw < fsw_nom * 0.5) f_sw = fsw_nom * 0.5;\n"
+        "  if (f_sw > fsw_nom * 2.0) f_sw = fsw_nom * 2.0;\n"
+        "  if (out_w > 0) y0[0] = f_sw;\n"
+        "  {\n"
+        "    int_T k;\n"
+        "    for (k = 1; k < out_w; ++k) y0[k] = 0.0;\n"
+        "  }\n"
+    )
+    # Route input/control blocks by topology family.
+    fam = power_stage_family(topology_kind)
+    arch = (control.architecture or 'pi').strip().lower()
+    if fam == 'dc_ac_inverter':
+        input_block = inverter_input_block
+        control_branch = inverter_branch
+    elif fam == 'dc_dc_resonant':
+        input_block = resonant_input_block
+        control_branch = resonant_branch
+    elif fam == 'dc_dc_isolated':
+        input_block = isolated_input_block
+        control_branch = isolated_branch
+    elif arch == 'cascaded':
+        input_block = buck_input_block
+        control_branch = buck_cascaded_branch
+    else:
+        input_block = buck_input_block
+        control_branch = buck_branch
     return (
         f"/* Auto-generated wrapper for S-Function Builder block '{sfun_name}'. */\n"
         "#include <math.h>\n"
@@ -409,18 +484,30 @@ def _render_wrapper_c(
 def _pick_template_path(topology: TopologyDesign, req: RequirementSpec, template_override: Path | None = None) -> Path:
     if template_override is not None:
         return template_override
-    if topology.topology == 'inverter_3ph' or 'inverter' in req.name.lower():
-        inv = Path('examples/topology_inverter.slx')
-        if inv.exists():
-            return inv
+    fam = power_stage_family(topology.topology)
+    if fam == 'dc_ac_inverter':
+        candidate = Path('examples/topology_inverter.slx')
+        if candidate.exists():
+            return candidate
+    elif fam == 'dc_dc_resonant':
+        candidate = Path('examples/topology_resonant.slx')
+        if candidate.exists():
+            return candidate
+    elif fam == 'dc_dc_isolated':
+        candidate = Path('examples/topology_isolated.slx')
+        if candidate.exists():
+            return candidate
     return Path('examples/topology.slx')
 
 
 def _infer_output_mode(req: RequirementSpec, topology: TopologyDesign, output_width: int) -> str:
     explicit = (req.output_signal_mode or '').strip().lower()
-    if explicit in {'gate_pwm', 'duty_ratio'}:
+    if explicit in {'gate_pwm', 'duty_ratio', 'freq_control'}:
         return explicit
-    if topology.topology == 'inverter_3ph' and output_width >= 6:
+    if topology.resonant:
+        return 'freq_control'
+    fam = power_stage_family(topology.topology)
+    if fam == 'dc_ac_inverter' and output_width >= 6:
         return 'gate_pwm'
     return 'duty_ratio'
 
@@ -435,6 +522,7 @@ def _resolve_parameter_values(
     l_h = topology.inductor_uH * 1e-6
     c_f = topology.capacitor_uF * 1e-6
     tstop_s = max(0.02, req.settling_time_ms_max * 1e-3 * 5.0)
+    turns = getattr(topology, 'turns_ratio', 1.0)
 
     base_candidates = {
         'V_source': req.vin_nominal_v,
@@ -442,15 +530,21 @@ def _resolve_parameter_values(
         'Vdc': req.vin_nominal_v,
         'L': l_h,
         'Lf': l_h,
+        'Lr': l_h,          # Resonant inductance alias
         'L_filter': l_h,
         'C': c_f,
         'Cf': c_f,
+        'Cr': c_f,          # Resonant capacitance alias
         'C_filter': c_f,
         'R_load': r_load,
         'R_L': 0.02,
         'R_C': 0.01,
         'Ts': control.sample_time_s,
         'Tstop': tstop_s,
+        'N': turns,         # Transformer turns ratio (primary:secondary)
+        'n': turns,
+        'turns_ratio': turns,
+        'fsw_nom': req.fsw_hz,
     }
 
     if not template_symbols:
@@ -599,10 +693,32 @@ def _build_inverter_waveforms(
     time_s: list[float],
 ) -> dict[str, object]:
     freq_hz = 50.0
-    v_peak = max(req.vout_target_v, 1.0)
-    i_peak = max(req.pout_w / max(3.0 * req.vout_target_v, 1.0), 1.0)
-    damping = 1.0 - min(0.4, control.kp)
-    inrush_scale = min(1.0, max(0.25, control.inrush_limit_a / max(i_peak * 1.5, 1.0))) if control.inrush_control != 'none' else 1.0
+    vref = max(float(req.vout_target_v), 1.0)
+    i_peak = max(req.pout_w / max(3.0 * vref, 1.0), 1.0)
+    kp = max(float(control.kp), 1e-6)
+    ki = max(float(control.ki), 1e-6)
+    l_h = max(float(topology.inductor_uH) * 1e-6, 1e-9)
+    c_f = max(float(topology.capacitor_uF) * 1e-6, 1e-9)
+    arch = (control.architecture or 'pi').strip().lower()
+
+    # Second-order envelope dynamics, parameter-sensitive (mirrors buck approach).
+    wn = min(5000.0, max(100.0, 50.0 + 800.0 * kp + 30.0 * math.sqrt(ki) + 20.0 / math.sqrt(l_h * c_f)))
+    zeta = min(1.5, max(0.15, 0.25 + 1.8 * kp + 0.012 * math.sqrt(ki)))
+    if arch in {'dq', 'cascaded'}:
+        zeta = min(1.6, zeta + 0.1)
+    if arch in {'voc', 'voc_aho'}:
+        wn = min(wn, 3000.0)
+        zeta = max(zeta, 0.3)
+    if arch == 'vsg':
+        wn = min(wn, 2000.0)
+        zeta = max(zeta, 0.35)
+
+    inrush_scale = 1.0
+    if control.inrush_control != 'none' and control.inrush_limit_a > 0:
+        inrush_scale = min(1.0, max(0.25, control.inrush_limit_a / max(i_peak * 1.5, 1.0)))
+
+    fsw = max(float(req.fsw_hz), 1.0)
+    ripple_amp = (0.005 + 0.06 / math.sqrt(max(float(topology.capacitor_uF), 1.0))) * vref
 
     va: list[float] = []
     vb: list[float] = []
@@ -613,21 +729,40 @@ def _build_inverter_waveforms(
     vout_v: list[float] = []
 
     for t in time_s:
-        env = 1.0 - math.exp(-t / 0.0045)
+        # Closed-loop envelope: second-order step response converging to vref.
+        if zeta < 1.0:
+            wd = wn * math.sqrt(max(1e-9, 1.0 - zeta * zeta))
+            phi = math.atan2(math.sqrt(max(1e-9, 1.0 - zeta * zeta)), zeta)
+            env = vref * (1.0 - math.exp(-zeta * wn * t) / math.sqrt(max(1e-9, 1.0 - zeta * zeta)) * math.sin(wd * t + phi))
+        else:
+            env = vref * (1.0 - math.exp(-wn * t))
+
+        # Switching ripple on envelope.
+        ripple_decay = 0.2 + 0.8 * math.exp(-t / 0.005)
+        ripple = ripple_amp * ripple_decay * math.sin(2.0 * math.pi * fsw * t)
+        env_with_ripple = max(0.0, env + ripple)
+
+        # Phase voltages: peak = env * sqrt(2) so that sqrt((a^2+b^2+c^2)/3) = env.
+        v_phase_peak = env_with_ripple * math.sqrt(2.0)
         theta = 2.0 * math.pi * freq_hz * t
-        a = damping * env * v_peak * math.sin(theta)
-        b = damping * env * v_peak * math.sin(theta - 2.0 * math.pi / 3.0)
-        c = damping * env * v_peak * math.sin(theta + 2.0 * math.pi / 3.0)
-        ai = inrush_scale * env * i_peak * math.sin(theta - math.pi / 9.0)
-        bi = inrush_scale * env * i_peak * math.sin(theta - 2.0 * math.pi / 3.0 - math.pi / 9.0)
-        ci = inrush_scale * env * i_peak * math.sin(theta + 2.0 * math.pi / 3.0 - math.pi / 9.0)
+        a = v_phase_peak * math.sin(theta)
+        b = v_phase_peak * math.sin(theta - 2.0 * math.pi / 3.0)
+        c = v_phase_peak * math.sin(theta + 2.0 * math.pi / 3.0)
+
+        # Current envelope follows voltage envelope with inrush limiting.
+        i_env = inrush_scale * (env_with_ripple / max(vref, 1e-9)) * i_peak
+        ai = i_env * math.sqrt(2.0) * math.sin(theta - math.pi / 9.0)
+        bi = i_env * math.sqrt(2.0) * math.sin(theta - 2.0 * math.pi / 3.0 - math.pi / 9.0)
+        ci = i_env * math.sqrt(2.0) * math.sin(theta + 2.0 * math.pi / 3.0 - math.pi / 9.0)
+
         va.append(a)
         vb.append(b)
         vc.append(c)
         ia.append(ai)
         ib.append(bi)
         ic.append(ci)
-        vout_v.append(math.sqrt((a * a + b * b + c * c) / 3.0))
+        # For balanced 3-phase: sqrt((a^2+b^2+c^2)/3) = env_with_ripple.
+        vout_v.append(env_with_ripple)
 
     return {
         'time_s': time_s,
@@ -640,6 +775,11 @@ def _build_inverter_waveforms(
         'ic_a': ic,
         'topology': topology.topology,
         'architecture': control.architecture,
+        'model': 'synthetic_inverter_damped_second_order',
+        'model_params': {
+            'wn_rad_s': wn,
+            'zeta': zeta,
+        },
     }
 
 
@@ -687,3 +827,199 @@ def _build_buck_waveforms(
             'zeta': zeta,
         },
     }
+
+
+def _build_resonant_waveforms(
+    req: RequirementSpec,
+    topology: TopologyDesign,
+    control: ControlDesign,
+    time_s: list[float],
+) -> dict[str, object]:
+    """Synthetic second-order model for resonant converters (LLC/SRC/LCC/CLLC).
+
+    Resonant converters typically have lower control bandwidth and softer
+    transients than hard-switched PWM converters.  The frequency-domain gain
+    characteristic means the effective natural frequency is lower and the
+    damping is higher than a comparable buck converter of the same power.
+    """
+    vref = max(float(req.vout_target_v), 1e-9)
+    kp = max(float(control.kp), 1e-6)   # Hz/V
+    ki = max(float(control.ki), 1e-6)   # Hz/(V·s)
+    l_h = max(float(topology.inductor_uH) * 1e-6, 1e-9)   # Lr
+    c_f = max(float(topology.capacitor_uF) * 1e-6, 1e-12)  # Cr
+    fsw = max(float(req.fsw_hz), 1.0)
+
+    # Resonant frequency of the LLC tank.
+    f_res_tank = 1.0 / (2.0 * math.pi * math.sqrt(l_h * c_f))
+
+    # Control bandwidth is limited by the gain curve slope near resonance.
+    # Approximate bandwidth ~ kp * gain_slope; typical gain_slope ~ vref/fsw.
+    gain_slope = vref / max(fsw, 1.0)
+    wn = min(3000.0, max(50.0, 2.0 * math.pi * kp * gain_slope * 100.0 + 30.0 / math.sqrt(l_h * c_f)))
+    # Resonant converters are inherently more damped due to tank losses.
+    zeta = min(1.6, max(0.3, 0.45 + 1.2 * kp * gain_slope))
+
+    ripple_amp = (0.003 + 0.02 / math.sqrt(max(float(topology.capacitor_uF), 0.001))) * vref
+
+    vout_v: list[float] = []
+    for t in time_s:
+        if zeta < 1.0:
+            wd = wn * math.sqrt(max(1e-9, 1.0 - zeta * zeta))
+            phi = math.atan2(math.sqrt(max(1e-9, 1.0 - zeta * zeta)), zeta)
+            base = 1.0 - math.exp(-zeta * wn * t) / math.sqrt(max(1e-9, 1.0 - zeta * zeta)) * math.sin(wd * t + phi)
+        else:
+            base = 1.0 - math.exp(-wn * t)
+        ripple_decay = 0.15 + 0.85 * math.exp(-t / 0.003)
+        ripple = ripple_amp * ripple_decay * math.sin(2.0 * math.pi * fsw * t)
+        vout_v.append(vref * base + ripple)
+
+    return {
+        'time_s': time_s,
+        'vout_v': vout_v,
+        'topology': topology.topology,
+        'architecture': control.architecture,
+        'model': 'synthetic_resonant_damped_second_order',
+        'model_params': {
+            'wn_rad_s': wn,
+            'zeta': zeta,
+            'f_res_tank_hz': f_res_tank,
+        },
+    }
+
+
+def _metrics_from_waveform(
+    waveforms: dict[str, object],
+    req: RequirementSpec,
+    topology: TopologyDesign,
+) -> dict[str, float]:
+    """Derive simulation metrics directly from the synthetic waveform data."""
+    vout_v = [float(x) for x in waveforms.get('vout_v', [])]
+    time_s = [float(x) for x in waveforms.get('time_s', [])]
+    target = max(float(req.vout_target_v), 1e-9)
+
+    if len(vout_v) < 10 or len(time_s) != len(vout_v):
+        return {
+            'overshoot_pct': 0.0,
+            'settling_time_ms': 0.0,
+            'ripple_v_pp': 0.0,
+            'efficiency_pct': 90.0,
+        }
+
+    # Overshoot from waveform peak.
+    overshoot_pct = max(0.0, (max(vout_v) - target) / target * 100.0)
+
+    # Settling time: last sample outside 2% band.
+    band = target * 0.02
+    last_outside = -1
+    for i, v in enumerate(vout_v):
+        if abs(v - target) > band:
+            last_outside = i
+    settling_time_ms = max(0.0, time_s[last_outside] - time_s[0]) * 1000.0 if last_outside >= 0 else 0.0
+
+    # Ripple from tail 20%.
+    tail_start = int(0.8 * len(vout_v))
+    tail = vout_v[tail_start:]
+    ripple_v_pp = (max(tail) - min(tail)) if tail else 0.0
+
+    # Efficiency: heuristic based on topology family and passives (no waveform equivalent).
+    ratio = req.vout_target_v / max(req.vin_nominal_v, 1e-9)
+    top = topology.topology.strip().lower()
+    fam = power_stage_family(top)
+    if top in {'llc_resonant', 'cllc_resonant', 'psfb', 'dab'}:
+        topology_bonus = 1.08   # Soft-switching → lower conduction/switching losses
+    elif top in {'buck'} and ratio < 1:
+        topology_bonus = 1.0
+    elif top in {'boost'} and ratio > 1:
+        topology_bonus = 1.0
+    elif fam == 'dc_dc_isolated':
+        topology_bonus = 0.94   # Transformer losses
+    elif fam == 'dc_ac_inverter':
+        topology_bonus = 0.96
+    else:
+        topology_bonus = 0.92
+    eff = min(99.0, 88.0 + 5.0 * topology_bonus + math.log10(max(topology.inductor_uH, 1.0)))
+
+    return {
+        'overshoot_pct': round(overshoot_pct, 3),
+        'settling_time_ms': round(settling_time_ms, 3),
+        'ripple_v_pp': round(ripple_v_pp, 4),
+        'efficiency_pct': round(eff, 3),
+    }
+
+
+def _render_sfun_glue_c(
+    sfun_name: str,
+    input_width: int,
+    output_width: int,
+    wrapper_module: str,
+) -> str:
+    """Generate the MEX glue file (e.g. control_sfunc.c) that declares the
+    wrapper functions as extern and wires them to the Simulink S-Function
+    callbacks.  This is the companion to the control_sfunc_wrapper.c file
+    that ACSS generates with the actual control law.
+
+    MATLAB requires both files when SFunctionModules = '<wrapper_module>':
+      - control_sfunc.c        : S-Function callbacks (this file)
+      - control_sfunc_wrapper.c: Control implementation (ACSS-generated)
+    """
+    return (
+        f"/* Auto-generated MEX glue for S-Function '{sfun_name}'.\n"
+        f" * Companion to {wrapper_module} which contains the control law.\n"
+        f" * Do not edit — re-generated by ACSS on each run.\n"
+        f" */\n"
+        f"#define S_FUNCTION_LEVEL 2\n"
+        f"#define S_FUNCTION_NAME  {sfun_name}\n"
+        f"#include \"simstruc.h\"\n"
+        f"\n"
+        f"/* Wrapper functions implemented in {wrapper_module} */\n"
+        f"extern void {sfun_name}_Start_wrapper(void);\n"
+        f"extern void {sfun_name}_Outputs_wrapper(const real_T *u0, real_T *y0);\n"
+        f"extern void {sfun_name}_Terminate_wrapper(void);\n"
+        f"\n"
+        f"static void mdlInitializeSizes(SimStruct *S)\n"
+        f"{{\n"
+        f"    ssSetNumSFcnParams(S, 0);\n"
+        f"    if (ssGetNumSFcnParams(S) != ssGetSFcnParamsCount(S)) return;\n"
+        f"    ssSetNumContStates(S, 0);\n"
+        f"    ssSetNumDiscStates(S, 0);\n"
+        f"    if (!ssSetNumInputPorts(S, 1)) return;\n"
+        f"    ssSetInputPortWidth(S, 0, {input_width});\n"
+        f"    ssSetInputPortDirectFeedThrough(S, 0, 1);\n"
+        f"    ssSetInputPortRequiredContiguous(S, 0, 1);\n"
+        f"    if (!ssSetNumOutputPorts(S, 1)) return;\n"
+        f"    ssSetOutputPortWidth(S, 0, {output_width});\n"
+        f"    ssSetNumSampleTimes(S, 1);\n"
+        f"    ssSetOptions(S, 0);\n"
+        f"}}\n"
+        f"\n"
+        f"static void mdlInitializeSampleTimes(SimStruct *S)\n"
+        f"{{\n"
+        f"    ssSetSampleTime(S, 0, INHERITED_SAMPLE_TIME);\n"
+        f"    ssSetOffsetTime(S, 0, 0.0);\n"
+        f"}}\n"
+        f"\n"
+        f"#define MDL_START\n"
+        f"static void mdlStart(SimStruct *S)\n"
+        f"{{\n"
+        f"    {sfun_name}_Start_wrapper();\n"
+        f"}}\n"
+        f"\n"
+        f"static void mdlOutputs(SimStruct *S, int_T tid)\n"
+        f"{{\n"
+        f"    const real_T *u0 = ssGetInputPortRealSignal(S, 0);\n"
+        f"    real_T *y0 = ssGetOutputPortRealSignal(S, 0);\n"
+        f"    UNUSED_ARG(tid);\n"
+        f"    {sfun_name}_Outputs_wrapper(u0, y0);\n"
+        f"}}\n"
+        f"\n"
+        f"static void mdlTerminate(SimStruct *S)\n"
+        f"{{\n"
+        f"    {sfun_name}_Terminate_wrapper();\n"
+        f"}}\n"
+        f"\n"
+        f"#ifdef MATLAB_MEX_FILE\n"
+        f"#include \"simulink.c\"\n"
+        f"#else\n"
+        f"#include \"cg_sfun.h\"\n"
+        f"#endif\n"
+    )

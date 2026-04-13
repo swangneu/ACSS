@@ -22,6 +22,12 @@ def main() -> None:
         action='store_true',
         help='Pause after each workflow step and allow manual approval or JSON edits',
     )
+    parser.add_argument(
+        '--workflow-mode',
+        choices=['legacy', 'layered'],
+        default='legacy',
+        help='Workflow mode. legacy preserves old loop, layered enables architecture-aware diagnosis/decisions.',
+    )
     args = parser.parse_args()
 
     orch = ACSSOrchestrator(
@@ -30,6 +36,7 @@ def main() -> None:
         use_matlab=not args.no_matlab,
         template_slx=args.template_slx,
         human_review=args.human_review,
+        workflow_mode=args.workflow_mode,
     )
     run_dir = orch.run()
     print(f'Run complete: {run_dir}')
