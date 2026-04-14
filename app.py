@@ -223,11 +223,6 @@ with st.sidebar:
             index=0,
             help="legacy: sequential loop. layered: adds diagnosis & intelligent decisions.",
         )
-        no_matlab = st.checkbox(
-            "No MATLAB (synthetic simulator)",
-            value=True,
-            help="Disable MATLAB/Simulink. Uses synthetic metrics. Final validation requires MATLAB.",
-        )
         out_dir_str = st.text_input("Output directory", value="runs")
 
         is_running = st.session_state["run_status"] == "running"
@@ -277,7 +272,6 @@ with st.sidebar:
             slx_path=Path(slx_path_str),
             out_dir=Path(out_dir_str),
             workflow_mode=wf_mode,
-            no_matlab=no_matlab,
         )
         st.session_state.update(
             {

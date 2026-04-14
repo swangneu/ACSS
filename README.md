@@ -26,7 +26,7 @@ Requirements JSON  +  Simulink template (.slx)
 │     ├─ acss_params.m          (plant parameters)    │
 │     ├─ control_sfunc.c        (S-Function MEX glue) │
 │     └─ control_sfunc_wrapper.c (control law in C)   │
-│     then runs: MATLAB/Simulink → PySpice → synthetic│
+│     then runs: MATLAB/Simulink (required)           │
 │  7. Visualization Agent → waveform SVG/JSON plots   │
 │  8. Evaluation Agent  → checks limits + waveform    │
 │                         harness (pass/fail + score) │
@@ -42,15 +42,11 @@ Requirements JSON  +  Simulink template (.slx)
   └─ run_summary.json
 ```
 
-### Simulation backends (in priority order)
+### Simulation backend
 
-| Backend | When used | Result accepted for final pass? |
-|---|---|---|
-| MATLAB/Simulink | `matlab` on PATH and `--no-matlab` not set | Yes |
-| PySpice | MATLAB unavailable, PySpice installed, buck only | No |
-| Synthetic | All other cases | No |
+MATLAB/Simulink is the only supported simulation backend. Every run invokes `matlab -batch` to build and simulate the generated Simulink model. If MATLAB is not found on PATH or the simulation fails, the run aborts with a clear error — there is no synthetic fallback.
 
-The synthetic backend is physically plausible (second-order closed-loop response) and parameter-sensitive, so the LLM feedback loop has signal even without MATLAB.
+**3-phase inverter signal extraction** is handled automatically: ACSS injects a `To Workspace` block onto the `Three-Phase V-I Measurement` output at runtime so the AC voltage waveform is captured without modifying the `.slx` file permanently. The captured 3-phase signal is converted to its peak-amplitude equivalent (×√2) before metric comparison against `vout_target_v`.
 
 ### Workflow modes
 
@@ -105,14 +101,6 @@ python -m src.main `
   --requirements examples/requirements_inverter_3ph_grid_loadstep_template.json `
   --template-slx examples/topology_inverter.slx `
   --workflow-mode layered
-```
-
-**Smoke test without MATLAB:**
-```powershell
-python -m src.main `
-  --requirements examples/requirements_inverter_3ph_grid_loadstep_template.json `
-  --template-slx examples/topology_inverter.slx `
-  --no-matlab --workflow-mode layered
 ```
 
 ---
@@ -171,16 +159,8 @@ python -m src.main
   --requirements   PATH    requirements JSON (required)
   --template-slx   PATH    Simulink .slx template (required)
   --out            PATH    output root directory (default: runs/)
-  --no-matlab              skip MATLAB, use synthetic simulator
   --workflow-mode  MODE    legacy | layered (default: legacy)
   --human-review           pause after each step for manual approval
-```
-
-**Python simulator backend** (env var):
-```
-ACSS_PYTHON_SIM_BACKEND=auto      # try PySpice, then synthetic (default)
-ACSS_PYTHON_SIM_BACKEND=pyspice   # require PySpice
-ACSS_PYTHON_SIM_BACKEND=synthetic # always synthetic
 ```
 
 ---
@@ -238,7 +218,7 @@ runs/<timestamp>_<name>/
 
 ### Validation rule
 
-A final pass requires `validation_mode = simulink_matlab`. Synthetic and PySpice results are useful for development but are not accepted as final validation.
+A final pass requires `validation_mode = simulink_matlab`. Only a successful MATLAB/Simulink run produces a valid result.
 
 ---
 
@@ -313,6 +293,8 @@ To add knowledge: write compact JSON entries under the appropriate topic folder.
 | `control_sfunc.c not detected` | Run from the `manual_matlab_package/` folder; the file must be in the current directory |
 | `undefined reference to ssSetSimStateCompliance` | Regenerate the bundle with the latest ACSS — old bundles used a newer API call |
 | `multiple definition of control_sfunc_Start_wrapper` | Regenerate the bundle — old bundles duplicated the C implementation |
+| MATLAB error 5202 `Unable to communicate with required MathWorks services` | Open MATLAB interactively first to complete license activation, then re-run ACSS |
+| `MissingVoutSignal` in MATLAB log | The `.slx` template has no matching output signal — ACSS automatically injects a `To Workspace` block; if it still fails, check that the template contains a `Three-Phase V-I Measurement` block |
 
 ---
 

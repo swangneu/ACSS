@@ -37,14 +37,12 @@ class ACSSOrchestrator:
         self,
         requirements_path: Path,
         out_root: Path,
-        use_matlab: bool = True,
         template_slx: Path | None = None,
         human_review: bool = False,
         workflow_mode: str = 'legacy',
     ):
         self.requirements_path = requirements_path
         self.out_root = out_root
-        self.use_matlab = use_matlab
         self.template_slx = template_slx
         self.human_review = human_review
         self.workflow_mode = workflow_mode.strip().lower()
@@ -99,7 +97,7 @@ class ACSSOrchestrator:
             )
             return run_dir
         progress = _ProgressReporter(req.max_iterations)
-        progress.start_run(req.name, run_dir, self.template_slx, self.use_matlab, self.workflow_mode)
+        progress.start_run(req.name, run_dir, self.template_slx, self.workflow_mode)
 
         if self.workflow_mode == 'layered':
             return self._run_layered(req, run_dir, progress)
@@ -138,7 +136,6 @@ class ACSSOrchestrator:
                 control,
                 payload_path,
                 iter_dir,
-                self.use_matlab,
                 template_override=self.template_slx,
             )
             progress.done('simulation', mode=str(sim.raw.get('mode', 'unknown')))
@@ -277,7 +274,6 @@ class ACSSOrchestrator:
                 payload_path=generation.payload_path,
                 iteration=i,
                 out_dir=iter_dir,
-                use_matlab=self.use_matlab,
                 template_slx=self.template_slx,
             )
             sim = self._review_step(iter_dir, 'simulation', sim)
@@ -903,12 +899,11 @@ class _ProgressReporter:
     def __init__(self, max_iterations: int) -> None:
         self.max_iterations = max_iterations
 
-    def start_run(self, name: str, run_dir: Path, template_slx: Path, use_matlab: bool, workflow_mode: str) -> None:
-        mode = 'matlab' if use_matlab else 'synthetic'
+    def start_run(self, name: str, run_dir: Path, template_slx: Path, workflow_mode: str) -> None:
         print(f'[run] Starting ACSS for {name}')
         print(f'[run] Output: {run_dir}')
         print(f'[run] Template: {template_slx}')
-        print(f'[run] Validation mode: {mode}')
+        print(f'[run] Validation mode: matlab')
         print(f'[run] Workflow mode: {workflow_mode}')
 
     def step(self, step_name: str, iteration: int, total_iterations: int, message: str) -> None:

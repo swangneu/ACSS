@@ -38,7 +38,6 @@ class WorkflowIntegrationTests(unittest.TestCase):
             legacy = ACSSOrchestrator(
                 req_path,
                 out_root,
-                use_matlab=False,
                 template_slx=template,
                 workflow_mode='legacy',
             )
@@ -48,7 +47,6 @@ class WorkflowIntegrationTests(unittest.TestCase):
             layered = ACSSOrchestrator(
                 req_path,
                 out_root,
-                use_matlab=False,
                 template_slx=template,
                 workflow_mode='layered',
             )

@@ -13,7 +13,6 @@ def launch_run(
     slx_path: Path,
     out_dir: Path,
     workflow_mode: str,
-    no_matlab: bool,
 ) -> dict:
     """Spawn `python -m src.main` as a subprocess and start draining its stdout.
 
@@ -30,9 +29,6 @@ def launch_run(
         "--out", str(out_dir),
         "--workflow-mode", workflow_mode,
     ]
-    if no_matlab:
-        cmd.append("--no-matlab")
-
     # PYTHONUNBUFFERED ensures print() reaches the pipe immediately even on Windows
     env = {**os.environ, "PYTHONUNBUFFERED": "1"}
 

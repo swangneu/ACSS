@@ -21,7 +21,6 @@ class SimulationExecutor:
         payload_path: str,
         iteration: int,
         out_dir,
-        use_matlab: bool,
         template_slx,
     ) -> tuple[SimulationResult, SimulationExecutionReport]:
         sim = self.simulation_agent.run(
@@ -30,7 +29,6 @@ class SimulationExecutor:
             control,
             Path(payload_path),
             out_dir,
-            use_matlab,
             template_override=template_slx,
         )
         sim.visualization_files = self.visualization_agent.build(req, topology, control, sim, out_dir)

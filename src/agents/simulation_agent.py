@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import json
 import math
-import os
 from pathlib import Path
 from dataclasses import asdict
 
 from src.agents._topology_meta import power_stage_family, is_resonant, is_isolated, is_inverter
 from src.contracts import ControlDesign, RequirementSpec, SimulationResult, TopologyDesign, dump_json
 from src.matlab_bridge import run_matlab_stub
-from src.sim.pyspice_backend import run_pyspice_buck
 from src.slx_template import load_template_info
 
 
@@ -21,7 +19,6 @@ class SimulationAgent:
         control: ControlDesign,
         payload_path: Path,
         out_dir: Path,
-        use_matlab: bool,
         template_override: Path | None = None,
     ) -> SimulationResult:
         template_path = _pick_template_path(topology, req, template_override)
@@ -109,81 +106,20 @@ class SimulationAgent:
         if sfun_glue_path is not None:
             code_files.append(str(sfun_glue_path))
 
-        if use_matlab:
-            print(f'[simulation] MATLAB requested for {payload_path.name}; writing logs under {out_dir}', flush=True)
-            maybe = run_matlab_stub(payload_path, out_dir, template_path)
-            if maybe is not None:
-                maybe.waveform_image_files = _export_waveform_images(maybe.waveform_files, out_dir)
-                maybe.code_files = code_files
-                maybe.raw = {
-                    **maybe.raw,
-                    'waveform_image_files': maybe.waveform_image_files,
-                    'parameter_resolution': {
-                        'resolved_symbols': sorted(resolved_values.keys()),
-                        'unresolved_symbols': unresolved_symbols,
-                    },
-                }
-                print(f'[simulation] MATLAB completed for {payload_path.name}', flush=True)
-                return maybe
-            print(f'[simulation] MATLAB unavailable or failed; falling back to synthetic for {payload_path.name}', flush=True)
-
-        py_backend = os.getenv('ACSS_PYTHON_SIM_BACKEND', 'auto').strip().lower()
-        if py_backend in {'auto', 'pyspice'}:
-            maybe_py = run_pyspice_buck(req, topology, control, out_dir)
-            if maybe_py is not None:
-                maybe_py.waveform_image_files = _export_waveform_images(maybe_py.waveform_files, out_dir)
-                maybe_py.code_files = code_files
-                maybe_py.raw = {
-                    **maybe_py.raw,
-                    'payload': str(payload_path),
-                    'control': asdict(control),
-                    'topology': asdict(topology),
-                    'waveform_image_files': maybe_py.waveform_image_files,
-                    'parameter_resolution': {
-                        'resolved_symbols': sorted(resolved_values.keys()),
-                        'unresolved_symbols': unresolved_symbols,
-                    },
-                }
-                print(f'[simulation] Python backend completed ({py_backend}) for {payload_path.name}', flush=True)
-                return maybe_py
-            if py_backend == 'pyspice':
-                print('[simulation] PySpice backend requested but unavailable; using synthetic fallback', flush=True)
-
-        # Synthetic fallback for environments without MATLAB.
-        time_s = [i * 1e-4 for i in range(200)]
-        fam = power_stage_family(topology.topology)
-        if fam == 'dc_ac_inverter':
-            waveforms = _build_inverter_waveforms(req, topology, control, time_s)
-        elif fam == 'dc_dc_resonant':
-            waveforms = _build_resonant_waveforms(req, topology, control, time_s)
-        else:
-            waveforms = _build_buck_waveforms(req, topology, control, time_s)
-        wf_path = out_dir / 'waveforms.json'
-        dump_json(wf_path, waveforms)
-
-        # Derive metrics from the generated waveform (not disconnected heuristics).
-        metrics = _metrics_from_waveform(waveforms, req, topology)
-        image_files = _export_waveform_images([str(wf_path)], out_dir)
-
-        raw = {
-            'mode': 'synthetic',
-            'payload': str(payload_path),
-            'control': asdict(control),
-            'topology': asdict(topology),
-            'validation': 'synthetic_after_matlab_failure' if use_matlab else 'synthetic',
-            'waveform_image_files': image_files,
+        print(f'[simulation] Running MATLAB for {payload_path.name}; logs under {out_dir}', flush=True)
+        result = run_matlab_stub(payload_path, out_dir, template_path)
+        result.waveform_image_files = _export_waveform_images(result.waveform_files, out_dir)
+        result.code_files = code_files
+        result.raw = {
+            **result.raw,
+            'waveform_image_files': result.waveform_image_files,
             'parameter_resolution': {
                 'resolved_symbols': sorted(resolved_values.keys()),
                 'unresolved_symbols': unresolved_symbols,
             },
         }
-        return SimulationResult(
-            metrics=metrics,
-            waveform_files=[str(wf_path)],
-            code_files=code_files,
-            raw=raw,
-            waveform_image_files=image_files,
-        )
+        print(f'[simulation] MATLAB completed for {payload_path.name}', flush=True)
+        return result
 
 
 def _render_params_m(

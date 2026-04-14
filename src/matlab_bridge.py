@@ -9,10 +9,13 @@ from pathlib import Path
 from src.contracts import SimulationResult
 
 
-def run_matlab_stub(payload_path: Path, out_dir: Path, template_slx: Path | None = None) -> SimulationResult | None:
+def run_matlab_stub(payload_path: Path, out_dir: Path, template_slx: Path | None = None) -> SimulationResult:
     matlab_exe = shutil.which('matlab')
     if matlab_exe is None:
-        return None
+        raise RuntimeError(
+            "MATLAB not found on PATH. ACSS requires MATLAB/Simulink for simulation. "
+            "Ensure 'matlab' is installed and available on the system PATH."
+        )
 
     payload_path = payload_path.resolve()
     out_dir = out_dir.resolve()
@@ -26,35 +29,31 @@ def run_matlab_stub(payload_path: Path, out_dir: Path, template_slx: Path | None
             f"acss_build_and_run('{payload_path.as_posix()}','{out_json.as_posix()}','{template_arg}')"
         ),
     ]
-    runtime_root = out_dir / '.matlab_runtime'
-    home_dir = runtime_root / 'home'
-    temp_dir = runtime_root / 'tmp'
-    pref_dir = runtime_root / 'pref'
-    home_dir.mkdir(parents=True, exist_ok=True)
-    temp_dir.mkdir(parents=True, exist_ok=True)
-    pref_dir.mkdir(parents=True, exist_ok=True)
-
+    # Use the real user environment so MATLAB can find its license credentials.
     env = os.environ.copy()
-    env['USERPROFILE'] = str(home_dir)
-    env['HOME'] = str(home_dir)
-    env['TEMP'] = str(temp_dir)
-    env['TMP'] = str(temp_dir)
-    env['MATLAB_PREFDIR'] = str(pref_dir)
 
     try:
         completed = subprocess.run(cmd, check=True, capture_output=True, text=True, env=env)
         (out_dir / 'matlab_stdout.log').write_text(completed.stdout or '', encoding='utf-8')
         (out_dir / 'matlab_stderr.log').write_text(completed.stderr or '', encoding='utf-8')
     except Exception as e:
-        if hasattr(e, 'stdout'):
-            (out_dir / 'matlab_stdout.log').write_text(getattr(e, 'stdout', '') or '', encoding='utf-8')
-        if hasattr(e, 'stderr'):
-            (out_dir / 'matlab_stderr.log').write_text(getattr(e, 'stderr', '') or '', encoding='utf-8')
+        stdout_text = getattr(e, 'stdout', '') or ''
+        stderr_text = getattr(e, 'stderr', '') or ''
+        if stdout_text:
+            (out_dir / 'matlab_stdout.log').write_text(stdout_text, encoding='utf-8')
+        if stderr_text:
+            (out_dir / 'matlab_stderr.log').write_text(stderr_text, encoding='utf-8')
         (out_dir / 'matlab_bridge_error.log').write_text(str(e), encoding='utf-8')
-        return None
+        raise RuntimeError(
+            f"MATLAB simulation failed: {e}\n"
+            f"Check logs in {out_dir} for details."
+        ) from e
 
     if not out_json.exists():
-        return None
+        raise RuntimeError(
+            f"MATLAB ran but produced no output file at {out_json}. "
+            f"Check matlab_stdout.log and matlab_stderr.log in {out_dir}."
+        )
 
     data = json.loads(out_json.read_text(encoding='utf-8'))
     code_files = data.get('code_files', [])

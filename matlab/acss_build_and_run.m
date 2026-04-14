@@ -73,14 +73,58 @@ try
     [~, modelName, ~] = fileparts(modelPath);
     load_system(modelPath);
 
+    % Inject To Workspace blocks branched off measurement block outputs so
+    % that sim() returns the data via ReturnWorkspaceOutputs even when the
+    % model's signal-logging configuration does not cover these lines.
+    acss_vabc_injected = inject_tow_block(modelName, 'v-i', 1, 'ACSS_Vabc', 'ACSS_Vabc_Save');
+    acss_iabc_injected = inject_tow_block(modelName, 'v-i', 2, 'ACSS_Iabc', 'ACSS_Iabc_Save');
+
     [par, ctrl] = acss_params();
     assignin('base', 'par', par);
     assignin('base', 'ctrl', ctrl);
 
     simOut = sim(modelName, 'ReturnWorkspaceOutputs', 'on', 'SrcWorkspace', 'base');
 
-    [t, vout] = pick_signal(simOut, {'vout','v_out','vo','vabc','v_a'});
+    % Try injected To Workspace blocks first (most reliable for Simscape models)
+    [t, vout] = deal([], []);
+    if acss_vabc_injected
+        [t, vout] = read_tow_signal(simOut, 'ACSS_Vabc');
+        if ~isempty(t)
+            fprintf('[ACSS] Got Vabc from injected To Workspace (%d samples)\n', numel(t));
+        end
+    end
+
+    % Fall back to logsout / yout
     if isempty(t) || isempty(vout)
+        vout_keys = {'vout','v_out','vo','vabc','v_a','vload','v_load', ...
+                     'vphase','vline','vabc_out','output','vac','v_ac', ...
+                     'phase_voltage','line_voltage','vref'};
+        [t, vout] = pick_signal(simOut, vout_keys);
+    end
+
+    if isempty(t) || isempty(vout)
+        fprintf('[ACSS DEBUG] No vout signal found. Available logsout signals:\n');
+        try
+            logs = simOut.logsout;
+            for di = 1:logs.numElements
+                fprintf('  logsout[%d]: %s\n', di, logs.get(di).Name);
+            end
+        catch
+            fprintf('  (logsout unavailable)\n');
+        end
+        fprintf('[ACSS DEBUG] Available yout signals:\n');
+        try
+            yo = simOut.yout;
+            if isa(yo, 'Simulink.SimulationData.Dataset')
+                for di = 1:yo.numElements
+                    fprintf('  yout[%d]: %s\n', di, yo.get(di).Name);
+                end
+            else
+                fprintf('  yout is class: %s\n', class(yo));
+            end
+        catch
+            fprintf('  (yout unavailable)\n');
+        end
         warnings{end+1} = 'Missing vout waveform; using fallback metrics.'; %#ok<AGROW>
         error('MissingVoutSignal');
     end
@@ -90,14 +134,18 @@ try
     metrics.settling_time_ms = compute_settling_ms(t, vout, vref, 0.02);
     metrics.ripple_v_pp = compute_ripple_pp(t, vout);
 
-    [~, vin] = pick_signal(simOut, {'vin','v_dc','vdc'});
-    [~, iin] = pick_signal(simOut, {'iin','i_dc','idc'});
+    % Efficiency: use DC-side Vin/Iin from logsout.
+    % 3-phase instantaneous power can give misleading results for grid-forming
+    % inverters where reactive power dominates during startup, so we rely on
+    % the DC input power and fallback to 93.1% when output current is unavailable.
+    [~, vin]  = pick_signal(simOut, {'vin','v_dc','vdc'});
+    [~, iin]  = pick_signal(simOut, {'iin','i_dc','idc'});
     [~, iout] = pick_signal(simOut, {'iout','io','i_a'});
     if isempty(vin) || isempty(iin) || isempty(iout)
         warnings{end+1} = 'Missing power signals for efficiency; using fallback estimate.'; %#ok<AGROW>
         metrics.efficiency_pct = 93.1;
     else
-        pin = mean(abs(vin .* iin));
+        pin  = mean(abs(vin .* iin));
         pout = mean(abs(vout .* iout));
         if pin > 1e-9
             metrics.efficiency_pct = 100 * min(1, max(0, pout / pin));
@@ -268,5 +316,88 @@ if cond
     out = a;
 else
     out = b;
+end
+end
+
+% Inject a To Workspace block branched off output port portIdx of the first
+% SubSystem whose name contains the keyword nameKeyword (case-insensitive).
+% Returns true if the block was successfully injected and connected.
+function ok = inject_tow_block(modelName, nameKeyword, portIdx, varName, blkName)
+ok = false;
+try
+    all_ss = find_system(modelName, 'BlockType', 'SubSystem');
+    src_block = '';
+    for k = 1:numel(all_ss)
+        try
+            n = lower(get_param(all_ss{k}, 'Name'));
+            if contains(n, nameKeyword)
+                src_block = all_ss{k};
+                break;
+            end
+        catch
+        end
+    end
+    if isempty(src_block)
+        fprintf('[ACSS] inject_tow: no block matching "%s"\n', nameKeyword);
+        return;
+    end
+    ph_src = get_param(src_block, 'PortHandles');
+    if numel(ph_src.Outport) < portIdx
+        fprintf('[ACSS] inject_tow: block has %d outports, need %d\n', numel(ph_src.Outport), portIdx);
+        return;
+    end
+    tow_path = [modelName '/' blkName];
+    existing = find_system(modelName, 'SearchDepth', 1, 'Name', blkName);
+    if ~isempty(existing)
+        delete_block(tow_path);
+    end
+    add_block('simulink/Sinks/To Workspace', tow_path, ...
+        'VariableName', varName, ...
+        'SampleTime',   '-1', ...
+        'SaveFormat',   'StructureWithTime', ...
+        'MaxDataPoints', 'inf', ...
+        'Position',     [1200 100+portIdx*80 1280 120+portIdx*80]);
+    ph_tow = get_param(tow_path, 'PortHandles');
+    add_line(modelName, ph_src.Outport(portIdx), ph_tow.Inport(1), 'autorouting', 'on');
+    fprintf('[ACSS] Injected To Workspace "%s" from %s port %d\n', blkName, src_block, portIdx);
+    ok = true;
+catch ME
+    fprintf('[ACSS] inject_tow failed: %s\n', ME.message);
+end
+end
+
+% Read a StructureWithTime signal from a To Workspace block captured in simOut.
+% For multi-phase (3-phase) signals, returns the peak-amplitude equivalent:
+%   sqrt(mean(Va²+Vb²+Vc²)) * sqrt(2)  =  peak amplitude A for balanced 3-phase
+% This makes the result directly comparable to vout_target_v (specified as peak).
+function [t, y] = read_tow_signal(simOut, varName)
+t = []; y = [];
+try
+    data = simOut.(varName);
+    if isstruct(data) && isfield(data, 'time') && isfield(data, 'signals')
+        t = double(data.time(:));
+        vals = double(data.signals(1).values);
+        if size(vals, 2) > 1
+            % sqrt(mean(Va²,Vb²,Vc²)) = A/sqrt(2)  → multiply by sqrt(2) to get A
+            y = sqrt(mean(vals.^2, 2)) * sqrt(2);
+        else
+            y = vals(:);
+        end
+    end
+catch
+end
+end
+
+% Like read_tow_signal but returns the raw multi-column matrix without any
+% RMS or scaling transformation (needed for power/efficiency computation).
+function [t, vals] = read_tow_raw(simOut, varName)
+t = []; vals = [];
+try
+    data = simOut.(varName);
+    if isstruct(data) && isfield(data, 'time') && isfield(data, 'signals')
+        t    = double(data.time(:));
+        vals = double(data.signals(1).values);
+    end
+catch
 end
 end
