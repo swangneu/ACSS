@@ -1,12 +1,73 @@
 # ACSS — Autonomous Control Synthesis System
 
-AI-driven workflow that designs power electronics controllers end-to-end: from a requirements JSON to validated MATLAB/Simulink artifacts ready to drop into your model.
-
-<img src="images/acss_workflow.png" width="60%">
+AI-driven workflow that designs power electronics controllers end-to-end: feed it a requirements JSON and a Simulink template, and it produces validated MATLAB/Simulink artifacts ready to drop into your model.
 
 ---
 
-## How the workflow works
+## Quick start
+
+> **Prerequisites:** Python 3.10+, MATLAB/Simulink installed and on `PATH`, and a DeepSeek API key.
+
+### 1. Set your API key
+
+```powershell
+$env:DEEPSEEK_API_KEY = "sk-..."
+```
+
+Or save it permanently in `src/llm/local_secrets.py`:
+```python
+DEEPSEEK_API_KEY = "sk-..."
+```
+
+### 2. Install
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt -r requirements_streamlit.txt
+```
+
+> If PowerShell blocks `Activate.ps1`, run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` first, or skip activation and use `.\.venv\Scripts\python.exe` directly.
+
+### 3. Launch the UI
+
+```powershell
+python -m streamlit run app.py
+```
+
+Opens at **http://localhost:8501**. Pick an example from the sidebar, click **Run ACSS**, watch live progress.
+
+---
+
+## What's included
+
+The `examples/` folder ships with two ready-to-run designs:
+
+| Use case | Requirements | Template |
+|---|---|---|
+| **Buck converter** (48V → 12V, 500W) | `requirements_buck_48to12_500w.json` | `topology.slx` |
+| **3-phase inverter** (grid-forming, weak-grid + load step) | `requirements_inverter_3ph_grid_loadstep_template.json` | `topology_inverter.slx` |
+
+### Run from the command line
+
+**Buck converter:**
+```powershell
+python -m src.main `
+  --requirements examples/requirements_buck_48to12_500w.json `
+  --template-slx examples/topology.slx
+```
+
+**3-phase inverter** (uses the layered workflow for richer diagnosis):
+```powershell
+python -m src.main `
+  --requirements examples/requirements_inverter_3ph_grid_loadstep_template.json `
+  --template-slx examples/topology_inverter.slx `
+  --workflow-mode layered
+```
+
+---
+
+## How it works
 
 ```
 Requirements JSON  +  Simulink template (.slx)
@@ -20,15 +81,14 @@ Requirements JSON  +  Simulink template (.slx)
 │  3. Strategy Agent   → picks control architecture   │
 │     (RAG-retrieved knowledge + DeepSeek LLM)        │
 │  4. Control Agent    → synthesises kp, ki, Ts       │
-│     (RAG-retrieved knowledge + DeepSeek LLM)        │
 │  5. Model Builder    → writes model_payload.json    │
 │  6. Simulation Agent → generates C + .m artifacts   │
 │     ├─ acss_params.m          (plant parameters)    │
 │     ├─ control_sfunc.c        (S-Function MEX glue) │
 │     └─ control_sfunc_wrapper.c (control law in C)   │
-│     then runs: MATLAB/Simulink (required)           │
+│     then runs MATLAB/Simulink                       │
 │  7. Visualization Agent → waveform SVG/JSON plots   │
-│  8. Evaluation Agent  → checks limits + waveform    │
+│  8. Evaluation Agent  → metric checks + waveform    │
 │                         harness (pass/fail + score) │
 │  9. [if failed] Diagnosis + Decision → revise/tune  │
 │     └─ loops back to step 2, up to max_iterations   │
@@ -44,111 +104,59 @@ Requirements JSON  +  Simulink template (.slx)
 
 ### Simulation backend
 
-MATLAB/Simulink is the only supported simulation backend. Every run invokes `matlab -batch` to build and simulate the generated Simulink model. If MATLAB is not found on PATH or the simulation fails, the run aborts with a clear error — there is no synthetic fallback.
+MATLAB/Simulink is the only supported backend. Every run invokes `matlab -batch` to build and simulate the generated model. If MATLAB is not on `PATH` or the simulation fails, the run aborts with a clear error — there is no synthetic fallback.
 
-**3-phase inverter signal extraction** is handled automatically: ACSS injects a `To Workspace` block onto the `Three-Phase V-I Measurement` output at runtime so the AC voltage waveform is captured without modifying the `.slx` file permanently. The captured 3-phase signal is converted to its peak-amplitude equivalent (×√2) before metric comparison against `vout_target_v`.
+**3-phase inverter signal extraction** is handled automatically: ACSS injects a `To Workspace` block onto the `Three-Phase V-I Measurement` output at runtime, so AC voltage waveforms are captured without modifying the `.slx` permanently. The captured 3-phase signal is converted to its peak-amplitude equivalent (×√2) before being compared against `vout_target_v`.
 
 ### Workflow modes
 
-| Mode | Description |
+| Mode | When to use |
 |---|---|
-| `legacy` (default) | Single-loop: topology → generate → simulate → evaluate → revise |
-| `layered` | Adds explicit analysis → diagnosis → decision → hypothesis tracking after each failed iteration. Detects stagnation and escalates automatically. |
-
----
-
-## Quickstart
-
-### 1. Configure LLM
-
-ACSS requires a DeepSeek API key:
-
-```powershell
-$env:DEEPSEEK_API_KEY = "sk-..."
-```
-
-Or create `src/llm/local_secrets.py`:
-```python
-DEEPSEEK_API_KEY = "sk-..."
-```
-
-### 2. Install dependencies
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
-
-### 3. Run
-
-**Web UI (recommended):**
-```powershell
-python -m streamlit run app.py
-```
-Opens at `http://localhost:8501`. Configure inputs in the sidebar, click **Run ACSS**, and watch live progress and results update as iterations complete. Past runs can be reloaded from the sidebar.
-
-**Buck converter (CLI):**
-```powershell
-python -m src.main `
-  --requirements examples/requirements_buck_48to12_500w.json `
-  --template-slx examples/topology.slx
-```
-
-**3-phase inverter:**
-```powershell
-python -m src.main `
-  --requirements examples/requirements_inverter_3ph_grid_loadstep_template.json `
-  --template-slx examples/topology_inverter.slx `
-  --workflow-mode layered
-```
+| `legacy` (default) | Single-loop: topology → generate → simulate → evaluate → revise. Fast and good for buck-style designs. |
+| `layered` | Adds explicit analysis → diagnosis → decision → hypothesis tracking after each failed iteration. Detects stagnation and escalates automatically. Recommended for grid-forming inverters and harder problems. |
 
 ---
 
 ## Manual Simulink validation
 
-After each run, ACSS writes a self-contained bundle under:
+After each run, ACSS writes a self-contained bundle:
 ```
 runs/<timestamp>/manual_matlab_package/
 ```
 
-### Contents
-
-| File | Purpose |
-|---|---|
-| `setup.m` | Loads workspace variables + compiles S-Function MEX |
-| `acss_params.m` | Generated plant and controller parameters |
-| `control_sfunc.c` | S-Function MEX glue (S-Function callbacks) |
-| `control_sfunc_wrapper.c` | Generated control law (C implementation) |
-| `topology_template.slx` | Simulink model with scopes |
-| `run_manual_matlab.m` | Headless batch run → writes result JSON |
-| `acss_build_and_run.m` | MATLAB runner used by ACSS automation |
-| `model_payload.json` | Full design decisions for this iteration |
-
-### Interactive Simulink workflow (recommended)
+### Open it in Simulink
 
 ```
 1. Open MATLAB
 2. Set current folder to manual_matlab_package/
-3. >> run('setup.m')
+3. >> run('setup.m')             % loads variables + compiles MEX
 4. >> open_system('topology_template.slx')
-5. Click ▶ Run in Simulink
+5. Click ▶ Run
 ```
 
-`setup.m` does two things:
-- Loads `par.*` and `ctrl.*` variables into the base workspace
-- Compiles `control_sfunc.c` + `control_sfunc_wrapper.c` into a MEX
+The model has Scopes wired up; use **Simulation Data Inspector** (`Ctrl+Shift+I`) to zoom and export signals.
 
-The model has **Scopes** wired to voltage and current measurements. Once the run completes, use **Simulation Data Inspector** (`Ctrl+Shift+I`) to zoom, compare, and export signals.
+> **Re-run with different gains:** Edit `acss_params.m`, run `setup.m` again to recompile, click Run.
 
-> **Re-run with different gains:** Edit `acss_params.m`, then run `setup.m` again to recompile and reload before clicking Run.
-
-### Headless batch workflow
+### Headless batch run
 
 ```matlab
 run('run_manual_matlab.m')
 % writes manual_matlab_result.json in this folder
 ```
+
+### Bundle contents
+
+| File | Purpose |
+|---|---|
+| `setup.m` | Loads workspace variables + compiles S-Function MEX |
+| `acss_params.m` | Generated plant and controller parameters |
+| `control_sfunc.c` | S-Function MEX glue |
+| `control_sfunc_wrapper.c` | Generated control law (C implementation) |
+| `topology_template.slx` | Simulink model with scopes |
+| `run_manual_matlab.m` | Headless batch run → writes result JSON |
+| `acss_build_and_run.m` | MATLAB runner used by ACSS automation |
+| `model_payload.json` | Full design decisions for this iteration |
 
 ---
 
@@ -216,8 +224,6 @@ runs/<timestamp>_<name>/
 └── final_artifacts/              passing iteration code (if any passed)
 ```
 
-### Validation rule
-
 A final pass requires `validation_mode = simulink_matlab`. Only a successful MATLAB/Simulink run produces a valid result.
 
 ---
@@ -283,10 +289,13 @@ To add knowledge: write compact JSON entries under the appropriate topic folder.
 
 ---
 
-## Common errors
+## Troubleshooting
 
 | Error | Fix |
 |---|---|
+| `ModuleNotFoundError: No module named 'streamlit'` | Run `pip install -r requirements_streamlit.txt` — streamlit is in the UI requirements file, not the base one |
+| `.\.venv\Scripts\Activate.ps1 ... not recognized` | Run `python -m venv .venv` first to create the virtual environment |
+| `Activate.ps1 cannot be loaded because running scripts is disabled` | Run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`, or skip activation and use `.\.venv\Scripts\python.exe -m streamlit run app.py` |
 | `error: the following arguments are required: --template-slx` | Add `--template-slx examples/topology.slx` |
 | `ValueError: requirements JSON must include non-empty 'design_prompt'` | Add `"design_prompt": "..."` to your requirements JSON |
 | `ACSS is configured for LLM-only execution. No DeepSeek API key found` | Set `DEEPSEEK_API_KEY` environment variable |
@@ -294,9 +303,10 @@ To add knowledge: write compact JSON entries under the appropriate topic folder.
 | `undefined reference to ssSetSimStateCompliance` | Regenerate the bundle with the latest ACSS — old bundles used a newer API call |
 | `multiple definition of control_sfunc_Start_wrapper` | Regenerate the bundle — old bundles duplicated the C implementation |
 | MATLAB error 5202 `Unable to communicate with required MathWorks services` | Open MATLAB interactively first to complete license activation, then re-run ACSS |
-| `MissingVoutSignal` in MATLAB log | The `.slx` template has no matching output signal — ACSS automatically injects a `To Workspace` block; if it still fails, check that the template contains a `Three-Phase V-I Measurement` block |
+| `MissingVoutSignal` in MATLAB log | Check that the `.slx` template contains a `Three-Phase V-I Measurement` block — ACSS injects the `To Workspace` block automatically |
 
 ---
 
 ## Workflow diagram
-- Editable source: `images/workflows/acss_workflow.excalidraw`
+
+Editable source: `images/workflows/acss_workflow.excalidraw`
