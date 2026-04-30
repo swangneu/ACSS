@@ -60,6 +60,70 @@ class ParsedDesignSpec:
 
 
 @dataclass
+class TestEvent:
+    """A single transient event the simulation must subject the design to."""
+    kind: str                  # "load_step" | "vin_step" | "grid_fault" | "startup" | ...
+    t_event_s: float           # absolute simulation time at which the event fires
+    magnitude: float | None = None
+    description: str = ''      # LLM rationale: why this event tests the user's intent
+
+
+@dataclass
+class TestPlan:
+    """LLM-authored description of how the simulation should be run."""
+    duration_s: float
+    initial_conditions: dict[str, float] = field(default_factory=dict)
+    events: list[TestEvent] = field(default_factory=list)
+    primary_signals: list[str] = field(default_factory=list)
+    rationale: str = ''
+
+
+@dataclass
+class Gate:
+    """A single pass/fail criterion against a metric in the harness namespace.
+
+    `threshold` is either a number or an expression string that the existing
+    rule evaluator can resolve over the namespace (e.g. ``"abs_target * 0.05"``).
+    `source` records whether the threshold came directly from the user's prompt
+    or was a domain-default chosen by the LLM, so the UI can highlight defaults
+    and let the user push back without a form.
+    """
+    id: str
+    metric: str
+    op: str                     # one of: <=, >=, <, >, ==, !=
+    threshold: Any              # number or expression string
+    rationale: str = ''
+    severity: str = 'must_pass'  # "must_pass" | "should_pass" | "watch_only"
+    source: str = 'domain_default'  # "derived_from_prompt" | "domain_default"
+    unit: str = ''
+
+
+@dataclass
+class EvaluationRubric:
+    control_objective: str = ''                # "dc_regulation" | "ac_tracking" | "grid_following"
+    signal_model: dict[str, Any] = field(default_factory=dict)
+    gates: list[Gate] = field(default_factory=list)
+    pathology_watch: list[str] = field(default_factory=list)
+    notes: str = ''
+
+
+@dataclass
+class DesignBrief:
+    """Self-contained, LLM-authored description of a design's goals, test plan,
+    and evaluation rubric. Persisted as ``runs/<id>/design_brief.json`` so any
+    past run can be replayed and audited from a single artifact.
+    """
+    user_prompt: str
+    topology_hint: str = ''
+    control_objective: str = ''
+    intent: DesignIntent = field(default_factory=DesignIntent)
+    test_plan: TestPlan = field(default_factory=lambda: TestPlan(duration_s=0.0))
+    evaluation_rubric: EvaluationRubric = field(default_factory=EvaluationRubric)
+    exit_criteria: dict[str, Any] = field(default_factory=dict)
+    llm_meta: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
 class GenerationOutput:
     iteration: int
     strategy: dict[str, Any]

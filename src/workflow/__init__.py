@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from src.workflow.contracts import (
+    DesignBrief,
     DesignIntent,
+    EvaluationRubric,
     FailureDiagnosisReport,
     FailureIssueType,
+    Gate,
     GenerationOutput,
     HypothesisState,
     NextAction,
@@ -11,8 +14,11 @@ from src.workflow.contracts import (
     ParsedDesignSpec,
     ResponseAnalysisReport,
     SimulationExecutionReport,
+    TestEvent,
+    TestPlan,
 )
 from src.workflow.controller_generator import ControllerGenerator
+from src.workflow.design_brief import DesignBriefAgent
 from src.workflow.failure_diagnoser import FailureDiagnoser
 from src.workflow.hypothesis_manager import HypothesisManager
 from src.workflow.response_analyzer import ResponseAnalyzer
@@ -21,11 +27,15 @@ from src.workflow.spec_parser import DesignSpecParser
 
 __all__ = [
     'ControllerGenerator',
+    'DesignBrief',
+    'DesignBriefAgent',
     'DesignIntent',
     'DesignSpecParser',
+    'EvaluationRubric',
     'FailureDiagnoser',
     'FailureDiagnosisReport',
     'FailureIssueType',
+    'Gate',
     'GenerationOutput',
     'HypothesisManager',
     'HypothesisState',
@@ -36,5 +46,7 @@ __all__ = [
     'ResponseAnalyzer',
     'SimulationExecutionReport',
     'SimulationExecutor',
+    'TestEvent',
+    'TestPlan',
 ]
 
