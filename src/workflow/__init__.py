@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from src.workflow.contracts import (
+    DesignIntent,
     FailureDiagnosisReport,
     FailureIssueType,
     GenerationOutput,
@@ -20,6 +21,7 @@ from src.workflow.spec_parser import DesignSpecParser
 
 __all__ = [
     'ControllerGenerator',
+    'DesignIntent',
     'DesignSpecParser',
     'FailureDiagnoser',
     'FailureDiagnosisReport',

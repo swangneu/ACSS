@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from src.llm import DeepSeekClient
 from src.workflow.contracts import (
     FailureDiagnosisReport,
@@ -20,12 +22,14 @@ class HypothesisManager:
         analysis: ResponseAnalysisReport,
         diagnosis: FailureDiagnosisReport,
         previous_state: HypothesisState | None,
+        sensitivity: dict[str, Any] | None = None,
     ) -> tuple[HypothesisState, NextStepDecision]:
         if not self.client.enabled:
             raise RuntimeError('DeepSeek API key is required for HypothesisManager in LLM-only mode.')
 
         prev_history = list(previous_state.history) if previous_state is not None else []
         stagnant, arch_switches = _compute_stagnation(prev_history)
+        responsiveness = (sensitivity or {}).get('responsiveness', 'unknown')
 
         # Hard escalation: stop wasting iterations when stuck.
         if stagnant >= 3 and arch_switches >= 2:
@@ -36,6 +40,31 @@ class HypothesisManager:
                 stop_run=True,
             )
 
+        # Sensitivity-driven early escalation: when the trajectory probe says
+        # the failing metric isn't responding to gain changes (or moving the
+        # wrong way), don't waste another iteration retuning.
+        if responsiveness == 'none':
+            return _forced_decision(
+                analysis, diagnosis, prev_history, stagnant, arch_switches,
+                action=NextAction.SWITCH_CONTROLLER_ARCHITECTURE,
+                rationale=(
+                    f'Sensitivity probe reports tuning is not moving the failing metric '
+                    f"({(sensitivity or {}).get('primary_metric','')} unresponsive to "
+                    f"{(sensitivity or {}).get('primary_gain','')}); switching architecture."
+                ),
+                stop_run=False,
+            )
+        if responsiveness == 'monotonic_wrong':
+            return _forced_decision(
+                analysis, diagnosis, prev_history, stagnant, arch_switches,
+                action=NextAction.PATCH_IMPLEMENTATION,
+                rationale=(
+                    f'Sensitivity probe reports the gain change moved the failing metric in the wrong '
+                    f'direction — likely a sign / feedback-polarity / scaling defect rather than tuning.'
+                ),
+                stop_run=False,
+            )
+
         data = self.client.complete_json(
             (
                 'You are a next-step decision manager for controller synthesis workflow. '
@@ -43,9 +72,10 @@ class HypothesisManager:
                 'action must be one of: retune_parameters, patch_implementation, '
                 'switch_controller_architecture, request_model_plant_inspection. '
                 f'Stagnation metrics: stagnant_iterations={stagnant}, architecture_switches={arch_switches}. '
+                f'Sensitivity probe: responsiveness={responsiveness}. '
                 'If stagnant_iterations >= 3, strongly prefer switch_controller_architecture or request_model_plant_inspection.'
             ),
-            f'analysis={analysis}\ndiagnosis={diagnosis}\nprevious_state={previous_state}',
+            f'analysis={analysis}\ndiagnosis={diagnosis}\nprevious_state={previous_state}\nsensitivity={sensitivity or {}}',
             temperature=0.0,
         )
         action_raw = str(data.get('action', '')).strip()

@@ -5,6 +5,7 @@ from dataclasses import asdict
 from src.agents._topology_meta import TOPOLOGY_ALLOWLIST, is_resonant, is_isolated
 from src.contracts import RequirementSpec, TopologyDesign
 from src.llm import DeepSeekClient
+from src.workflow.contracts import DesignIntent, render_intent_for_prompt
 
 _TOPOLOGY_LIST = ", ".join(TOPOLOGY_ALLOWLIST)
 
@@ -43,10 +44,10 @@ class TopologyAgent:
     def __init__(self) -> None:
         self.client = DeepSeekClient()
 
-    def design(self, req: RequirementSpec) -> TopologyDesign:
+    def design(self, req: RequirementSpec, intent: DesignIntent | None = None) -> TopologyDesign:
         if not self.client.enabled:
             raise RuntimeError('DeepSeek API key is required for TopologyAgent in LLM-only mode.')
-        llm_result = self._design_with_llm(req)
+        llm_result = self._design_with_llm(req, intent)
         topology = str(llm_result['topology']).strip().lower()
         return TopologyDesign(
             topology=topology,
@@ -57,10 +58,22 @@ class TopologyAgent:
             resonant=is_resonant(topology),
         )
 
-    def _design_with_llm(self, req: RequirementSpec) -> dict[str, object]:
+    def _design_with_llm(self, req: RequirementSpec, intent: DesignIntent | None) -> dict[str, object]:
+        intent_block = render_intent_for_prompt(intent)
+        if intent_block:
+            header = (
+                "Given this requirement object, propose a practical initial topology and passive sizing "
+                "for a first simulation iteration. Let the user_intent block drive your topology "
+                "choice; the raw design_prompt is a fallback only.\n"
+                f"{intent_block}\n"
+            )
+        else:
+            header = (
+                "Given this requirement object, propose a practical initial topology and passive sizing "
+                "for a first simulation iteration.\n"
+            )
         user_prompt = (
-            "Given this requirement object, propose a practical initial topology and passive sizing "
-            "for a first simulation iteration.\n"
+            f"{header}"
             f"Design intent prompt: {req.design_prompt}\n"
             f"{asdict(req)}"
         )

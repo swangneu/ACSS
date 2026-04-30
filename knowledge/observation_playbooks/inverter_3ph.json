@@ -1,0 +1,58 @@
+{
+  "topology": "inverter_3ph",
+  "applies_to_families": ["dc_ac_inverter"],
+  "description": "Three-phase voltage-source inverter (grid-following or grid-forming). Watch per-phase amplitude balance, voltage THD, and PLL/frequency stability.",
+  "key_signals": ["va_v", "vb_v", "vc_v", "ia_a", "ib_a", "ic_a"],
+  "metrics": [
+    {"id": "phase_balance_pct", "extractor": "phase_balance_pct", "args": {"signals": ["va_v", "vb_v", "vc_v"]}},
+    {"id": "thd_va", "extractor": "thd_fft", "args": {"signal": "va_v"}},
+    {"id": "fundamental_hz_va", "extractor": "fundamental_hz", "args": {"signal": "va_v"}},
+    {"id": "envelope_pp_to_rms_ratio", "extractor": "ratio", "args": {"numerator": "tail_pp_v", "denominator": "tail_rms_v"}},
+    {"id": "first_peak_to_tail_ratio", "extractor": "first_peak_to_tail_ratio"},
+    {"id": "zero_crossings_in_tail", "extractor": "zero_crossings_in_tail"}
+  ],
+  "pathologies": [
+    {
+      "id": "phase_imbalance",
+      "when": {"metric": "phase_balance_pct", "op": ">", "value": 5.0},
+      "implies": "architecture_or_implementation",
+      "explanation": "Per-phase amplitudes diverge by >5% — typical of broken phase reference, mismatched PI gains across abc/dq frames, or wiring/sign error on one leg."
+    },
+    {
+      "id": "high_voltage_thd",
+      "when": {"metric": "thd_va", "op": ">", "value": 8.0},
+      "implies": "architecture_or_tuning",
+      "explanation": "Voltage THD on phase-a >8% — current loop bandwidth too low for grid harmonics, modulation saturating, or LCL resonance not damped."
+    },
+    {
+      "id": "frequency_drift",
+      "when": {"all": [
+        {"metric": "fundamental_hz_va", "op": ">", "value": 0.0},
+        {"metric": "fundamental_hz_va", "op": "<", "value": 45.0}
+      ]},
+      "implies": "architecture",
+      "explanation": "Fundamental frequency falls well below 50/60Hz — PLL collapsed or droop loop gain mis-set; not a tuning-band fix."
+    },
+    {
+      "id": "envelope_instability",
+      "when": {"all": [
+        {"metric": "envelope_pp_to_rms_ratio", "op": ">", "value": 0.3},
+        {"metric": "zero_crossings_in_tail", "op": ">=", "value": 3}
+      ]},
+      "implies": "tuning_or_architecture",
+      "explanation": "Envelope (RMS proxy) oscillates around steady-state instead of staying flat — slow outer loop instability or weak-grid LCL resonance."
+    },
+    {
+      "id": "no_ac_output",
+      "when": {"metric": "tail_rms_v", "op": "<", "value": "abs_target * 0.1"},
+      "implies": "implementation",
+      "explanation": "AC envelope never reaches target — modulator disabled, gating failure, or DC link not energised; implementation issue, not tuning."
+    },
+    {
+      "id": "first_swing_overshoot",
+      "when": {"metric": "first_peak_to_tail_ratio", "op": ">", "value": 1.4},
+      "implies": "tuning",
+      "explanation": "First-swing overshoot well above tail RMS — voltage reference ramp too fast or current limiter set too loose; tighten ramp or add active current limiting."
+    }
+  ]
+}

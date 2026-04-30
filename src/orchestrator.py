@@ -30,6 +30,8 @@ from src.workflow import (
     SimulationExecutor,
 )
 from src.workflow.contracts import HypothesisState, NextAction, to_json_dict
+from src.workflow.pathology_classifier import PathologyClassifier
+from src.workflow.sensitivity_probe import TrajectoryProbe, empty_sensitivity
 
 
 class ACSSOrchestrator:
@@ -68,6 +70,8 @@ class ACSSOrchestrator:
         self.response_analyzer = ResponseAnalyzer()
         self.failure_diagnoser = FailureDiagnoser()
         self.hypothesis_manager = HypothesisManager()
+        self.pathology_classifier = PathologyClassifier()
+        self.sensitivity_probe = TrajectoryProbe()
 
     def run(self) -> Path:
         if self.template_slx is None:
@@ -99,13 +103,25 @@ class ACSSOrchestrator:
         progress = _ProgressReporter(req.max_iterations)
         progress.start_run(req.name, run_dir, self.template_slx, self.workflow_mode)
 
+        progress.step('intent', 0, req.max_iterations, 'Parsing design intent')
+        parsed_spec = self.spec_parser.parse(req)
+        parsed_spec = self._review_design_intent(run_dir, parsed_spec)
+        dump_json(run_dir / 'design_spec.json', to_json_dict(parsed_spec))
+        intent = parsed_spec.intent
+        progress.done(
+            'intent',
+            llm_parsed=intent.llm_parsed,
+            priorities=len(intent.priorities),
+            scenarios=len(intent.operating_scenarios),
+        )
+
         if self.workflow_mode == 'layered':
-            return self._run_layered(req, run_dir, progress)
+            return self._run_layered(req, run_dir, progress, parsed_spec)
 
         records: list[IterationRecord] = []
 
         progress.step('topology', 0, req.max_iterations, 'Selecting topology and initial passives')
-        topology = self.topology_agent.design(req)
+        topology = self.topology_agent.design(req, intent=intent)
         progress.done('topology', topology=topology.topology)
         topology = self._review_step(run_dir, 'topology', topology)
 
@@ -119,11 +135,11 @@ class ACSSOrchestrator:
             sensors = self._review_step(iter_dir, 'sensors', sensors)
             previous_eval = records[-1].evaluation if records else None
             progress.step('strategy', i, req.max_iterations, 'Choosing control strategy')
-            strategy = self.control_strategy_agent.choose(req, topology, i, previous_eval)
+            strategy = self.control_strategy_agent.choose(req, topology, i, previous_eval, intent=intent)
             progress.done('strategy', architecture=str(strategy.get('architecture', '')))
             strategy = self._review_step(iter_dir, 'control_strategy', strategy)
             progress.step('control', i, req.max_iterations, 'Synthesizing control parameters')
-            control = self.control_agent.design(req, topology, iteration=i, strategy=strategy)
+            control = self.control_agent.design(req, topology, iteration=i, strategy=strategy, intent=intent)
             progress.done('control', kp=f'{control.kp:.4g}', ki=f'{control.ki:.4g}')
             control = self._review_step(iter_dir, 'control', control)
             progress.step('payload', i, req.max_iterations, 'Building simulation payload')
@@ -230,9 +246,8 @@ class ACSSOrchestrator:
 
         return run_dir
 
-    def _run_layered(self, req: object, run_dir: Path, progress: object) -> Path:
-        parsed_spec = self.spec_parser.parse(req)
-        dump_json(run_dir / 'design_spec.json', to_json_dict(parsed_spec))
+    def _run_layered(self, req: object, run_dir: Path, progress: object, parsed_spec: object) -> Path:
+        intent = parsed_spec.intent
 
         records: list[IterationRecord] = []
         analysis_history = []
@@ -242,7 +257,7 @@ class ACSSOrchestrator:
         forced_strategy: dict[str, object] | None = None
 
         progress.step('topology', 0, req.max_iterations, 'Selecting topology and initial passives')
-        topology = self.topology_agent.design(req)
+        topology = self.topology_agent.design(req, intent=intent)
         progress.done('topology', topology=topology.topology)
         topology = self._review_step(run_dir, 'topology', topology)
 
@@ -259,6 +274,7 @@ class ACSSOrchestrator:
                 iter_dir,
                 previous_evaluation=previous_eval,
                 strategy_override=forced_strategy,
+                intent=intent,
             )
             forced_strategy = None
             sensors = self._review_step(iter_dir, 'sensors', sensors)
@@ -293,17 +309,42 @@ class ACSSOrchestrator:
                 iter_dir=iter_dir,
                 architecture=str(strategy.get('architecture', '')),
                 previous=analysis_history[-1] if analysis_history else None,
+                topology=topology.topology,
+                req=req,
+                control=control,
             )
-            diagnosis = self.failure_diagnoser.diagnose(analysis, analysis_history)
+            pathology_label = None
+            sensitivity = empty_sensitivity().to_dict()
+            if not analysis.passed:
+                pathology_label = self.pathology_classifier.classify(
+                    candidates=list(analysis.pathology_matches),
+                    waveform_features=dict(analysis.waveform_features),
+                    playbook_metrics=dict(analysis.playbook_metrics),
+                    architecture=analysis.architecture,
+                    topology=topology.topology,
+                ).to_dict()
+                sensitivity = self.sensitivity_probe.evaluate(analysis).to_dict()
+            diagnosis = self.failure_diagnoser.diagnose(
+                analysis,
+                analysis_history,
+                intent=intent,
+                pathology_label=pathology_label,
+                sensitivity=sensitivity,
+            )
             hypothesis_state, decision = self.hypothesis_manager.decide(
                 analysis=analysis,
                 diagnosis=diagnosis,
                 previous_state=hypothesis_state,
+                sensitivity=sensitivity,
             )
             analysis_history.append(analysis)
 
             dump_json(iter_dir / 'analysis_report.json', to_json_dict(analysis))
-            dump_json(iter_dir / 'diagnosis_report.json', to_json_dict(diagnosis))
+            diagnosis_dict = to_json_dict(diagnosis)
+            if pathology_label is not None:
+                diagnosis_dict['pathology_label'] = pathology_label
+            diagnosis_dict['sensitivity'] = sensitivity
+            dump_json(iter_dir / 'diagnosis_report.json', diagnosis_dict)
             dump_json(iter_dir / 'decision_report.json', to_json_dict(decision))
 
             engineer_review = self._engineer_review_iteration(
@@ -373,6 +414,7 @@ class ACSSOrchestrator:
 
             progress.step('revision', i, req.max_iterations, f'Applying action: {decision.action.value}')
             waveform_report = self._load_waveform_report(iter_dir)
+            attempted_architectures = [r.control.architecture for r in records if r.control and r.control.architecture]
             topology, req, forced_strategy = self._apply_layered_decision(
                 req=req,
                 topology=topology,
@@ -382,6 +424,8 @@ class ACSSOrchestrator:
                 iteration=i,
                 decision_action=decision.action,
                 waveform_report=waveform_report,
+                intent=intent,
+                attempted_architectures=attempted_architectures,
             )
             progress.done('revision', next_topology=topology.topology, action=decision.action.value)
 
@@ -438,6 +482,8 @@ class ACSSOrchestrator:
         iteration: int,
         decision_action: NextAction,
         waveform_report: dict | None = None,
+        intent: object = None,
+        attempted_architectures: list[str] | None = None,
     ):
         forced_strategy: dict[str, object] | None = None
         if decision_action == NextAction.RETUNE_PARAMETERS:
@@ -453,11 +499,18 @@ class ACSSOrchestrator:
             req.control_design_notes = f"{(req.control_design_notes or '').strip()} Patch implementation and interface mismatches.".strip()
             return topology, req, forced_strategy
         if decision_action == NextAction.SWITCH_CONTROLLER_ARCHITECTURE:
+            attempted_clean = [a for a in (attempted_architectures or []) if a]
+            avoid_clause = ''
+            if attempted_clean:
+                avoid_clause = (
+                    f' Already tried: {", ".join(sorted(set(attempted_clean)))}. '
+                    'Pick a structurally different architecture.'
+                )
             req.control_design_notes = (
                 f"{(req.control_design_notes or '').strip()} "
-                "Switch controller architecture; prioritize structure change over gain-only tuning."
+                f"Switch controller architecture; prioritize structure change over gain-only tuning.{avoid_clause}"
             ).strip()
-            forced_strategy = self.control_strategy_agent.choose(req, topology, iteration + 1, evaluation)
+            forced_strategy = self.control_strategy_agent.choose(req, topology, iteration + 1, evaluation, intent=intent)
             return topology, req, forced_strategy
         return topology, req, forced_strategy
 
@@ -667,6 +720,59 @@ class ACSSOrchestrator:
             'source_iteration': selected.iteration,
             'files': copied_files,
         }
+
+    def _review_design_intent(self, run_dir: Path, parsed_spec: object) -> object:
+        """Optional human-review gate for the parsed DesignIntent.
+
+        When --human-review is set, write a review file that the user can edit.
+        Edits to the `intent` block are loaded back; raw `design_prompt` and
+        `topology_hint` are also editable. Skips silently when the intent
+        wasn't LLM-parsed (no API key) since there's nothing meaningful to review.
+        """
+        if not self.human_review:
+            return parsed_spec
+        if not parsed_spec.intent.llm_parsed:
+            return parsed_spec
+
+        review_path = run_dir / 'design_intent.review.json'
+        dump_json(review_path, to_json_dict(parsed_spec))
+
+        print(f'[design_intent] Review proposal at: {review_path}')
+        print("Press Enter to accept, type 'e' to reload edited JSON, or 'q' to abort.")
+
+        from src.workflow.contracts import DesignIntent, ParsedDesignSpec  # local import to avoid cycle
+
+        while True:
+            choice = input('> ').strip().lower()
+            if choice == '':
+                return parsed_spec
+            if choice == 'q':
+                raise RuntimeError('Run aborted during design_intent review')
+            if choice == 'e':
+                payload = json.loads(review_path.read_text(encoding='utf-8'))
+                intent_payload = payload.get('intent', {}) or {}
+                edited_intent = DesignIntent(
+                    priorities=[str(x) for x in intent_payload.get('priorities', [])],
+                    operating_scenarios=[str(x) for x in intent_payload.get('operating_scenarios', [])],
+                    hard_constraints={str(k): float(v) for k, v in (intent_payload.get('hard_constraints', {}) or {}).items()},
+                    soft_preferences={str(k): float(v) for k, v in (intent_payload.get('soft_preferences', {}) or {}).items()},
+                    key_signals=[str(x) for x in intent_payload.get('key_signals', [])],
+                    concerns=[str(x) for x in intent_payload.get('concerns', [])],
+                    summary=str(intent_payload.get('summary', '')),
+                    llm_parsed=bool(intent_payload.get('llm_parsed', parsed_spec.intent.llm_parsed)),
+                )
+                edited_spec = ParsedDesignSpec(
+                    requirements_name=str(payload.get('requirements_name', parsed_spec.requirements_name)),
+                    design_prompt=str(payload.get('design_prompt', parsed_spec.design_prompt)),
+                    topology_hint=str(payload.get('topology_hint', parsed_spec.topology_hint)),
+                    objective_tags=[str(x) for x in payload.get('objective_tags', parsed_spec.objective_tags)],
+                    constraints={str(k): float(v) for k, v in (payload.get('constraints', parsed_spec.constraints) or {}).items()},
+                    control_design_notes=str(payload.get('control_design_notes', parsed_spec.control_design_notes)),
+                    intent=edited_intent,
+                )
+                dump_json(review_path, to_json_dict(edited_spec))
+                return edited_spec
+            print("Invalid choice. Use Enter, 'e', or 'q'.")
 
     def _review_step(self, base_dir: Path, step_name: str, data: object) -> object:
         if not self.human_review:

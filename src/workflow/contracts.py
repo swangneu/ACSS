@@ -20,6 +20,35 @@ class NextAction(str, Enum):
 
 
 @dataclass
+class DesignIntent:
+    """LLM-extracted semantic decomposition of a user's design_prompt.
+
+    Parsed once per run by `DesignSpecParser`, then read by every downstream
+    agent so the user's intent is interpreted consistently instead of being
+    re-derived from the raw prompt by each agent independently.
+    """
+    priorities: list[str] = field(default_factory=list)
+    operating_scenarios: list[str] = field(default_factory=list)
+    hard_constraints: dict[str, float] = field(default_factory=dict)
+    soft_preferences: dict[str, float] = field(default_factory=dict)
+    key_signals: list[str] = field(default_factory=list)
+    concerns: list[str] = field(default_factory=list)
+    summary: str = ''
+    llm_parsed: bool = False
+
+    def to_summary(self) -> dict[str, Any]:
+        return {
+            'priorities': list(self.priorities),
+            'operating_scenarios': list(self.operating_scenarios),
+            'hard_constraints': dict(self.hard_constraints),
+            'soft_preferences': dict(self.soft_preferences),
+            'key_signals': list(self.key_signals),
+            'concerns': list(self.concerns),
+            'summary': self.summary,
+        }
+
+
+@dataclass
 class ParsedDesignSpec:
     requirements_name: str
     design_prompt: str
@@ -27,6 +56,7 @@ class ParsedDesignSpec:
     objective_tags: list[str] = field(default_factory=list)
     constraints: dict[str, float] = field(default_factory=dict)
     control_design_notes: str = ''
+    intent: DesignIntent = field(default_factory=DesignIntent)
 
 
 @dataclass
@@ -65,6 +95,11 @@ class ResponseAnalysisReport:
     architecture: str = ''
     implementation_signals: list[str] = field(default_factory=list)
     dynamic_failure_signals: list[str] = field(default_factory=list)
+    playbook_topology: str = ''
+    playbook_metrics: dict[str, float] = field(default_factory=dict)
+    pathology_matches: list[dict[str, Any]] = field(default_factory=list)
+    waveform_features: dict[str, float] = field(default_factory=dict)
+    param_trajectory: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -101,4 +136,32 @@ def to_json_dict(obj: Any) -> dict[str, Any]:
         if isinstance(value, Enum):
             data[key] = value.value
     return data
+
+
+def render_intent_for_prompt(intent: DesignIntent | None) -> str:
+    """Render a DesignIntent as a compact, prompt-ready text block.
+
+    Returns an empty string when no LLM-parsed intent is available, so callers
+    can fall back to the raw design_prompt path without conditionals.
+    """
+    if intent is None or not intent.llm_parsed:
+        return ''
+    lines: list[str] = ['user_intent:']
+    if intent.summary:
+        lines.append(f'  summary: {intent.summary}')
+    if intent.priorities:
+        lines.append(f'  priorities (ranked, highest first): {", ".join(intent.priorities)}')
+    if intent.operating_scenarios:
+        lines.append(f'  must_handle_scenarios: {", ".join(intent.operating_scenarios)}')
+    if intent.key_signals:
+        lines.append(f'  key_signals_to_watch: {", ".join(intent.key_signals)}')
+    if intent.concerns:
+        lines.append(f'  concerns: {", ".join(intent.concerns)}')
+    if intent.hard_constraints:
+        items = ', '.join(f'{k}={v}' for k, v in intent.hard_constraints.items())
+        lines.append(f'  hard_constraints: {items}')
+    if intent.soft_preferences:
+        items = ', '.join(f'{k}={v}' for k, v in intent.soft_preferences.items())
+        lines.append(f'  soft_preferences: {items}')
+    return '\n'.join(lines)
 

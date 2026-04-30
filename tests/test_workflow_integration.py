@@ -43,6 +43,9 @@ class WorkflowIntegrationTests(unittest.TestCase):
             )
             legacy_run = legacy.run()
             self.assertTrue((legacy_run / 'run_summary.json').exists())
+            # Theme A: legacy mode also writes design_spec.json with intent.
+            legacy_spec = json.loads((legacy_run / 'design_spec.json').read_text(encoding='utf-8'))
+            self.assertIn('intent', legacy_spec)
 
             layered = ACSSOrchestrator(
                 req_path,
@@ -53,12 +56,37 @@ class WorkflowIntegrationTests(unittest.TestCase):
             layered_run = layered.run()
             self.assertTrue((layered_run / 'run_summary.json').exists())
             self.assertTrue((layered_run / 'workflow_trace.json').exists())
+
+            # Theme A: design_spec.json carries the LLM-parsed intent.
+            spec = json.loads((layered_run / 'design_spec.json').read_text(encoding='utf-8'))
+            self.assertIn('intent', spec)
+            intent = spec['intent']
+            self.assertIn('priorities', intent)
+            self.assertIn('operating_scenarios', intent)
+            self.assertIn('key_signals', intent)
+
             iter_dir = layered_run / 'iter_00'
             self.assertTrue((iter_dir / 'analysis_report.json').exists())
             self.assertTrue((iter_dir / 'diagnosis_report.json').exists())
             self.assertTrue((iter_dir / 'decision_report.json').exists())
 
+            # Theme B: analysis_report carries the playbook output.
+            analysis = json.loads((iter_dir / 'analysis_report.json').read_text(encoding='utf-8'))
+            self.assertIn('playbook_topology', analysis)
+            self.assertIn('playbook_metrics', analysis)
+            self.assertIn('pathology_matches', analysis)
+            self.assertIn('waveform_features', analysis)
+            self.assertIn('param_trajectory', analysis)
+
+            # Theme C + D: diagnosis_report carries pathology_label and sensitivity.
+            diagnosis = json.loads((iter_dir / 'diagnosis_report.json').read_text(encoding='utf-8'))
+            self.assertIn('sensitivity', diagnosis)
+            sensitivity = diagnosis['sensitivity']
+            self.assertIn('responsiveness', sensitivity)
+            # If the iteration actually failed, the pathology classifier would have run.
+            if not analysis.get('passed', False):
+                self.assertIn('pathology_label', diagnosis)
+
 
 if __name__ == '__main__':
     unittest.main()
-

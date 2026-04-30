@@ -11,6 +11,7 @@ from src.agents.parameter_validator import engineering_guidance, format_bounds_t
 from src.contracts import ControlDesign, RequirementSpec, TopologyDesign
 from src.llm import DeepSeekClient
 from src.rag import LocalKnowledgeBase, extract_references, format_retrieved_context
+from src.workflow.contracts import DesignIntent, render_intent_for_prompt
 
 # All architectures recognised by the system (across all topology families).
 _ALL_ARCHITECTURES: frozenset[str] = frozenset(
@@ -31,13 +32,14 @@ class ControlAgent:
         topology: TopologyDesign,
         iteration: int = 0,
         strategy: dict[str, object] | None = None,
+        intent: DesignIntent | None = None,
     ) -> ControlDesign:
         if strategy is None:
             strategy = {}
         if not self.client.enabled:
             raise RuntimeError('DeepSeek API key is required for ControlAgent in LLM-only mode.')
         context = self._retrieve_context(req, topology, strategy)
-        llm_result = self._design_with_llm(req, topology, iteration, strategy, context)
+        llm_result = self._design_with_llm(req, topology, iteration, strategy, context, intent)
         return self._build_design(req, llm_result, iteration, context, topology=topology)
 
     def _design_with_llm(
@@ -47,6 +49,7 @@ class ControlAgent:
         iteration: int,
         strategy: dict[str, object],
         retrieved_context: object,
+        intent: DesignIntent | None,
     ) -> dict[str, object]:
         bounds_text = format_bounds_text(topology.topology)
         guidance = engineering_guidance(
@@ -74,7 +77,10 @@ class ControlAgent:
             f"{guidance}\n"
             "Your parameters MUST be within the specified bounds."
         )
+        intent_block = render_intent_for_prompt(intent)
+        intent_section = f"{intent_block}\n" if intent_block else ''
         user_prompt = (
+            f"{intent_section}"
             f"requirements={asdict(req)}\n"
             f"topology={asdict(topology)}\n"
             f"topology_family={fam}\n"
@@ -82,7 +88,9 @@ class ControlAgent:
             f"iteration={iteration}\n"
             f"design_prompt={req.design_prompt}\n"
             f"retrieved_knowledge=\n{format_retrieved_context(retrieved_context)}\n"
-            "Keep controller type aligned with selected_strategy."
+            "Keep controller type aligned with selected_strategy. "
+            "When user_intent is present, choose initial gains that lean toward the highest-priority "
+            "objective (e.g. tighter bandwidth for fast_load_step, lower bandwidth for stability_margin_first)."
         )
         data = self.client.complete_json(system_prompt, user_prompt, temperature=0.1)
         required = {'controller', 'architecture', 'kp', 'ki', 'sample_time_s'}
@@ -141,10 +149,7 @@ class ControlAgent:
             architecture=arch,
             current_loop_enabled=bool(llm_result.get('current_loop_enabled', False)),
             inrush_control=inrush_raw,
-            inrush_limit_a=(
-                float(llm_result.get('inrush_limit_a', req.inrush_limit_a or 0.0))
-                if inrush_raw != 'none' else 0.0
-            ),
+            inrush_limit_a=_coerce_inrush_limit(llm_result, req) if inrush_raw != 'none' else 0.0,
             secondary_controller=str(llm_result.get('secondary_controller', 'none')),
             rationale=(
                 [str(x) for x in llm_result.get('rationale', [])]
@@ -190,6 +195,17 @@ def _control_tags(req: RequirementSpec, strategy: dict[str, object]) -> list[str
     if req.inrush_limit_a is not None or str(strategy.get('inrush_control', 'none')).strip().lower() != 'none':
         tags.append('inrush')
     return tags
+
+
+def _coerce_inrush_limit(llm_result: dict[str, object], req: RequirementSpec) -> float:
+    """Pick an inrush_limit_a value, tolerating LLM-returned None/missing keys."""
+    raw = llm_result.get('inrush_limit_a')
+    if raw is None:
+        raw = req.inrush_limit_a
+    try:
+        return float(raw) if raw is not None else 0.0
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def _normalize_inrush(value: str) -> str:

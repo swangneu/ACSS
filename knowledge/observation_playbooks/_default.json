@@ -1,0 +1,50 @@
+{
+  "topology": "_default",
+  "applies_to_families": ["*"],
+  "description": "Fallback playbook for any topology without a dedicated playbook. Uses only generic shape features so it never crashes on unknown signal sets.",
+  "key_signals": ["vout_v"],
+  "metrics": [
+    {"id": "tail_pp_to_mean_ratio", "extractor": "ratio", "args": {"numerator": "tail_pp_v", "denominator": "tail_abs_mean_v"}},
+    {"id": "first_peak_to_tail_ratio", "extractor": "first_peak_to_tail_ratio"},
+    {"id": "dominant_osc_hz", "extractor": "dominant_osc_hz", "args": {"signal": "vout_v"}},
+    {"id": "zero_crossings_in_tail", "extractor": "zero_crossings_in_tail"}
+  ],
+  "pathologies": [
+    {
+      "id": "underdamped_ringing",
+      "when": {"all": [
+        {"metric": "first_peak_to_tail_ratio", "op": ">", "value": 1.3},
+        {"metric": "zero_crossings_in_tail", "op": ">=", "value": 3}
+      ]},
+      "implies": "tuning",
+      "explanation": "Output overshoots first then rings around the setpoint with multiple zero-crossings — classic underdamped second-order response."
+    },
+    {
+      "id": "limit_cycle",
+      "when": {"all": [
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.2},
+        {"metric": "zero_crossings_in_tail", "op": ">=", "value": 6}
+      ]},
+      "implies": "tuning_or_architecture",
+      "explanation": "Sustained oscillation in steady state with no decay — limit cycle from saturation, integrator wind-up, or unstable inner loop."
+    },
+    {
+      "id": "steady_state_offset",
+      "when": {"metric": "steady_state_abs_error_pct", "op": ">", "value": 5.0},
+      "implies": "tuning_or_implementation",
+      "explanation": "Steady-state value persistently off from target — integrator gain too low, sign error, or feedforward miscalibration."
+    },
+    {
+      "id": "slow_first_settling",
+      "when": {"metric": "settling_time_ms_waveform", "op": ">", "value": "settling_time_ms_max * 1.5"},
+      "implies": "tuning",
+      "explanation": "Settling takes much longer than spec — bandwidth too low or dominant pole too far left."
+    },
+    {
+      "id": "no_response",
+      "when": {"metric": "tail_abs_mean_v", "op": "<", "value": "abs_target * 0.1"},
+      "implies": "implementation",
+      "explanation": "Output never approaches the target — wiring/sign/scaling error, not tuning."
+    }
+  ]
+}

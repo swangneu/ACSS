@@ -1,0 +1,55 @@
+{
+  "topology": "buck",
+  "applies_to_families": ["dc_dc_nonisolated"],
+  "description": "Buck converter (and structurally similar non-isolated DC-DC). Watch DC tracking, ripple at fsw, and damping of the LC corner.",
+  "key_signals": ["vout_v", "iL_a"],
+  "metrics": [
+    {"id": "tail_pp_to_mean_ratio", "extractor": "ratio", "args": {"numerator": "tail_pp_v", "denominator": "tail_abs_mean_v"}},
+    {"id": "first_peak_to_tail_ratio", "extractor": "first_peak_to_tail_ratio"},
+    {"id": "dominant_osc_hz", "extractor": "dominant_osc_hz", "args": {"signal": "vout_v"}},
+    {"id": "zero_crossings_in_tail", "extractor": "zero_crossings_in_tail"},
+    {"id": "ripple_to_fsw_ratio", "extractor": "ratio_to_fsw", "args": {"freq_metric": "dominant_osc_hz"}}
+  ],
+  "pathologies": [
+    {
+      "id": "underdamped_ringing",
+      "when": {"all": [
+        {"metric": "first_peak_to_tail_ratio", "op": ">", "value": 1.25},
+        {"metric": "zero_crossings_in_tail", "op": ">=", "value": 3}
+      ]},
+      "implies": "tuning",
+      "explanation": "Output rings around setpoint after a step — kp too high or insufficient damping for the LC corner."
+    },
+    {
+      "id": "subharmonic_oscillation",
+      "when": {"all": [
+        {"metric": "ripple_to_fsw_ratio", "op": "<", "value": 0.6},
+        {"metric": "ripple_to_fsw_ratio", "op": ">", "value": 0.0},
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.05}
+      ]},
+      "implies": "architecture_or_tuning",
+      "explanation": "Dominant oscillation well below fsw — likely subharmonic/half-fsw oscillation, often from peak-current-mode without slope compensation or unstable outer loop."
+    },
+    {
+      "id": "limit_cycle",
+      "when": {"all": [
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.2},
+        {"metric": "zero_crossings_in_tail", "op": ">=", "value": 6}
+      ]},
+      "implies": "tuning_or_architecture",
+      "explanation": "Sustained large-amplitude oscillation in steady state — saturation or integrator wind-up."
+    },
+    {
+      "id": "steady_state_offset",
+      "when": {"metric": "steady_state_abs_error_pct", "op": ">", "value": 5.0},
+      "implies": "tuning_or_implementation",
+      "explanation": "Vout DC offset persists — integrator gain too low or sign/scale error in the feedback path."
+    },
+    {
+      "id": "no_response",
+      "when": {"metric": "tail_abs_mean_v", "op": "<", "value": "abs_target * 0.1"},
+      "implies": "implementation",
+      "explanation": "Output never reaches the target neighbourhood — implementation defect (sign, scale, wiring), not a tuning problem."
+    }
+  ]
+}

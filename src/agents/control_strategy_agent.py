@@ -10,6 +10,7 @@ from src.agents._topology_meta import (
 from src.contracts import EvaluationResult, RequirementSpec, TopologyDesign
 from src.llm import DeepSeekClient
 from src.rag import LocalKnowledgeBase, extract_references, format_retrieved_context
+from src.workflow.contracts import DesignIntent, render_intent_for_prompt
 
 
 class ControlStrategyAgent:
@@ -23,11 +24,12 @@ class ControlStrategyAgent:
         topology: TopologyDesign,
         iteration: int,
         previous_evaluation: EvaluationResult | None = None,
+        intent: DesignIntent | None = None,
     ) -> dict[str, object]:
         if not self.client.enabled:
             raise RuntimeError('DeepSeek API key is required for ControlStrategyAgent in LLM-only mode.')
         context = self._retrieve_context(req, topology, previous_evaluation)
-        decision = self._choose_with_llm(req, topology, iteration, previous_evaluation, context)
+        decision = self._choose_with_llm(req, topology, iteration, previous_evaluation, context, intent)
         return self._attach_context(decision, context)
 
     def _choose_with_llm(
@@ -37,6 +39,7 @@ class ControlStrategyAgent:
         iteration: int,
         previous_evaluation: EvaluationResult | None,
         retrieved_context: object,
+        intent: DesignIntent | None,
     ) -> dict[str, object]:
         fam = power_stage_family(topology.topology)
         allowed_archs = FAMILY_ARCHITECTURES.get(fam, ['pi'])
@@ -57,7 +60,10 @@ class ControlStrategyAgent:
             f"{arch_constraint}\n"
             f"{resonant_note}"
         )
+        intent_block = render_intent_for_prompt(intent)
+        intent_section = f"{intent_block}\n" if intent_block else ''
         user_prompt = (
+            f"{intent_section}"
             f"requirements={asdict(req)}\n"
             f"topology={asdict(topology)}\n"
             f"topology_family={fam}\n"
@@ -65,7 +71,8 @@ class ControlStrategyAgent:
             f"previous_evaluation={asdict(previous_evaluation) if previous_evaluation else None}\n"
             f"design_prompt={req.design_prompt}\n"
             f"retrieved_knowledge=\n{format_retrieved_context(retrieved_context)}\n"
-            "Choose robust strategy for converter barriers, load step, grid connection, and inrush."
+            "Choose robust strategy for converter barriers, load step, grid connection, and inrush. "
+            "When user_intent is present, prioritize architectures that serve the listed priorities and scenarios."
         )
         data = self.client.complete_json(system_prompt, user_prompt, temperature=0.1)
         required = {'controller', 'architecture', 'current_loop_enabled', 'inrush_control', 'secondary_controller'}
