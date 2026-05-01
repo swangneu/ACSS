@@ -35,7 +35,14 @@ pip install -r requirements.txt -r requirements_streamlit.txt
 python -m streamlit run app.py
 ```
 
-Opens at **http://localhost:8501**. Pick an example from the sidebar, click **Run ACSS**, watch live progress.
+Opens at **http://localhost:8501**.
+
+The sidebar is built around two minimal-input flows — pick whichever fits:
+
+- **Use an example.** Choose a JSON from the *Source → Use Example* dropdown. Every field prefills. Click **Run ACSS**.
+- **Describe what you want.** Type your design goal in plain language (e.g. *"A 48 V → 12 V, 500 W buck with overshoot under 10 % and settling under 50 ms"*) and click **Run ACSS**. Defaults fill anything you don't override.
+
+All numeric fields (Vin/Vout/Pout/Fsw, ripple/settling/overshoot/efficiency) and topology/grid options live in collapsed expanders — open them only if you want to tune. The required pieces above the fold are: design goal, run name, max iterations, and the Simulink template.
 
 ---
 

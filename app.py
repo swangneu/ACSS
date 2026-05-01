@@ -157,40 +157,65 @@ with st.sidebar:
             st.warning("No example JSON files found in examples/")
 
     # ── Requirements form ────────────────────────────────────────────────────
+    st.caption(
+        "Pick an example above to prefill everything, or describe your design "
+        "below. All numeric specs live in collapsed sections — open them only "
+        "if you want to override defaults."
+    )
     with st.form("req_form", border=False):
-        st.markdown("**Specification**")
-
-        name = st.text_input(
-            "Name",
-            value=str(req_data.get("name", "my_design")),
-            help="Unique run identifier used in the output folder name",
-        )
+        # Primary inputs — the only thing most users need to touch
         design_prompt = st.text_area(
-            "Design prompt",
+            "Design goal",
             value=str(req_data.get("design_prompt", "")),
-            height=90,
-            help="Free-text description of the control objective",
+            height=140,
+            help="Describe what you want to design in plain language.",
+            placeholder=(
+                "e.g. A 48 V → 12 V, 500 W buck converter with fast "
+                "load-step response. Overshoot under 10%, settling under "
+                "50 ms, ripple under 100 mV."
+            ),
         )
+        c_name, c_iter = st.columns([2, 1])
+        with c_name:
+            name = st.text_input(
+                "Run name",
+                value=str(req_data.get("name", "my_design")),
+                help="Used in the output folder name.",
+            )
+        with c_iter:
+            max_iter = st.slider(
+                "Max iterations", 1, 8,
+                value=int(req_data.get("max_iterations", 3)),
+            )
 
-        c1, c2 = st.columns(2)
-        with c1:
-            vin = st.number_input("Vin (V)", value=float(req_data.get("vin_nominal_v", 48.0)), min_value=0.1, format="%.1f")
-            vout = st.number_input("Vout (V)", value=float(req_data.get("vout_target_v", 12.0)), min_value=0.1, format="%.1f")
-            pout = st.number_input("Pout (W)", value=float(req_data.get("pout_w", 500.0)), min_value=1.0, format="%.1f")
-            fsw = st.number_input("Fsw (Hz)", value=float(req_data.get("fsw_hz", 10000.0)), min_value=100.0, format="%.0f")
-        with c2:
-            ripple = st.number_input("Max ripple (V)", value=float(req_data.get("ripple_v_pp_max", 1.2)), min_value=0.001, format="%.3f")
-            settling = st.number_input("Max settling (ms)", value=float(req_data.get("settling_time_ms_max", 300.0)), min_value=0.1, format="%.1f")
-            overshoot = st.number_input("Max overshoot (%)", value=float(req_data.get("overshoot_pct_max", 20.0)), min_value=0.0, format="%.1f")
-            efficiency = st.number_input("Min efficiency (%)", value=float(req_data.get("efficiency_min_pct", 90.0)), min_value=0.0, max_value=100.0, format="%.1f")
+        # Template SLX stays visible — must match the chosen topology
+        slx_files = sorted(EXAMPLES_DIR.glob("*.slx"))
+        slx_names = [str(f) for f in slx_files] + ["(enter path manually)"]
+        slx_choice = st.selectbox("Template SLX", slx_names)
+        if slx_choice == "(enter path manually)":
+            slx_path_str = st.text_input("SLX path", value="examples/topology.slx")
+        else:
+            slx_path_str = slx_choice
 
-        max_iter = st.slider("Max iterations", 1, 8, value=int(req_data.get("max_iterations", 3)))
+        # ── Collapsed sections ────────────────────────────────────────────
+        with st.expander("Numeric specifications (override defaults)", expanded=False):
+            c1, c2 = st.columns(2)
+            with c1:
+                vin = st.number_input("Vin (V)", value=float(req_data.get("vin_nominal_v", 48.0)), min_value=0.1, format="%.1f")
+                vout = st.number_input("Vout (V)", value=float(req_data.get("vout_target_v", 12.0)), min_value=0.1, format="%.1f")
+                pout = st.number_input("Pout (W)", value=float(req_data.get("pout_w", 500.0)), min_value=1.0, format="%.1f")
+                fsw = st.number_input("Fsw (Hz)", value=float(req_data.get("fsw_hz", 10000.0)), min_value=100.0, format="%.0f")
+            with c2:
+                ripple = st.number_input("Max ripple (V)", value=float(req_data.get("ripple_v_pp_max", 1.2)), min_value=0.001, format="%.3f")
+                settling = st.number_input("Max settling (ms)", value=float(req_data.get("settling_time_ms_max", 300.0)), min_value=0.1, format="%.1f")
+                overshoot = st.number_input("Max overshoot (%)", value=float(req_data.get("overshoot_pct_max", 20.0)), min_value=0.0, format="%.1f")
+                efficiency = st.number_input("Min efficiency (%)", value=float(req_data.get("efficiency_min_pct", 90.0)), min_value=0.0, max_value=100.0, format="%.1f")
 
-        with st.expander("Optional / Advanced"):
+        with st.expander("Topology & operating conditions (advanced)", expanded=False):
             preferred_topology = st.text_input(
                 "Preferred topology",
                 value=str(req_data.get("preferred_topology", "") or ""),
-                help="e.g. buck, boost, inverter_3ph, llc_resonant",
+                help="e.g. buck, boost, inverter_3ph, llc_resonant. Leave blank to let the topology agent decide.",
             )
             control_notes = st.text_area(
                 "Control design notes",
@@ -207,23 +232,14 @@ with st.sidebar:
             load_step = st.number_input("Load step (%)", value=float(req_data.get("load_step_pct", 0.0) or 0.0), min_value=0.0, format="%.2f")
             inrush = st.number_input("Inrush limit (A)", value=float(req_data.get("inrush_limit_a", 0.0) or 0.0), min_value=0.0, format="%.1f")
 
-        st.markdown("**Template SLX**")
-        slx_files = sorted(EXAMPLES_DIR.glob("*.slx"))
-        slx_names = [str(f) for f in slx_files] + ["(enter path manually)"]
-        slx_choice = st.selectbox("Template file", slx_names)
-        if slx_choice == "(enter path manually)":
-            slx_path_str = st.text_input("SLX path", value="examples/topology.slx")
-        else:
-            slx_path_str = slx_choice
-
-        st.markdown("**Run options**")
-        wf_mode = st.selectbox(
-            "Workflow mode",
-            ["legacy", "layered"],
-            index=0,
-            help="legacy: sequential loop. layered: adds diagnosis & intelligent decisions.",
-        )
-        out_dir_str = st.text_input("Output directory", value="runs")
+        with st.expander("Run options", expanded=False):
+            wf_mode = st.selectbox(
+                "Workflow mode",
+                ["legacy", "layered"],
+                index=0,
+                help="legacy: sequential loop. layered: adds diagnosis & intelligent decisions.",
+            )
+            out_dir_str = st.text_input("Output directory", value="runs")
 
         is_running = st.session_state["run_status"] == "running"
         submitted = st.form_submit_button(
