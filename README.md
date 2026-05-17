@@ -1,6 +1,6 @@
 # ACSS — Autonomous Control Synthesis System
 
-AI-driven workflow that designs power electronics controllers end-to-end: feed it a requirements JSON and a Simulink template, and it produces validated MATLAB/Simulink artifacts ready to drop into your model.
+AI-driven workflow that designs power electronics controllers end-to-end: feed it a requirements JSON and it produces validated MATLAB/Simulink artifacts ready to drop into your model. The AI selects the topology, synthesizes control parameters, and generates the Simulink model automatically.
 
 ---
 
@@ -35,7 +35,7 @@ pip install -r requirements.txt -r requirements_streamlit.txt
 python -m streamlit run app.py
 ```
 
-Opens at **http://localhost:8501**. Pick an example from the sidebar, click **Run ACSS**, watch live progress.
+Opens at **http://localhost:8501**. Pick an example from the sidebar, select "(auto-generate)" for template, click **Run ACSS**, watch live progress.
 
 ---
 
@@ -43,14 +43,20 @@ Opens at **http://localhost:8501**. Pick an example from the sidebar, click **Ru
 
 The `examples/` folder ships with two ready-to-run designs:
 
-| Use case | Requirements | Template |
+| Use case | Requirements | Template (optional) |
 |---|---|---|
 | **Buck converter** (48V → 12V, 500W) | `requirements_buck_48to12_500w.json` | `topology.slx` |
 | **3-phase inverter** (grid-forming, weak-grid + load step) | `requirements_inverter_3ph_grid_loadstep_template.json` | `topology_inverter.slx` |
 
 ### Run from the command line
 
-**Buck converter:**
+**Buck converter** (auto-generate model — no template needed):
+```powershell
+python -m src.main `
+  --requirements examples/requirements_buck_48to12_500w.json
+```
+
+**Buck converter** (with explicit template):
 ```powershell
 python -m src.main `
   --requirements examples/requirements_buck_48to12_500w.json `
@@ -65,12 +71,24 @@ python -m src.main `
   --workflow-mode layered
 ```
 
+### MATLAB backend
+
+ACSS supports two MATLAB execution backends:
+
+| Backend | Flag | How it works |
+|---|---|---|
+| **Batch** (default) | `--matlab-backend batch` | Spawns `matlab -batch` for each simulation |
+| **MCP** | `--matlab-backend mcp` | Connects to a persistent MATLAB MCP server (faster, no cold-start) |
+| **Auto** | `--matlab-backend auto` | Try MCP, fall back to batch |
+
+MCP backend requires the lightweight ACSS MCP server (`matlab_mcp_server.py` included in repo) or the `matlab-mcp` package.
+
 ---
 
 ## How it works
 
 ```
-Requirements JSON  +  Simulink template (.slx)
+Requirements JSON  (+ optional Simulink template .slx)
         │
         ▼
 ┌─────────────────────────────────────────────────────┐
@@ -83,10 +101,11 @@ Requirements JSON  +  Simulink template (.slx)
 │  4. Control Agent    → synthesises kp, ki, Ts       │
 │  5. Model Builder    → writes model_payload.json    │
 │  6. Simulation Agent → generates C + .m artifacts   │
+│     ├─ build_model.m          (Simulink model gen)  │
 │     ├─ acss_params.m          (plant parameters)    │
 │     ├─ control_sfunc.c        (S-Function MEX glue) │
 │     └─ control_sfunc_wrapper.c (control law in C)   │
-│     then runs MATLAB/Simulink                       │
+│     then runs MATLAB/Simulink via batch or MCP      │
 │  7. Visualization Agent → waveform SVG/JSON plots   │
 │  8. Evaluation Agent  → metric checks + waveform    │
 │                         harness (pass/fail + score) │
@@ -102,9 +121,15 @@ Requirements JSON  +  Simulink template (.slx)
   └─ run_summary.json
 ```
 
+### Model generation
+
+When no `.slx` template is provided (or "(auto-generate)" is selected in the UI), ACSS generates `build_model.m` which copies the appropriate base template and updates component parameters (L, C, R_load, etc.) via `set_param`. This lets the AI select and adapt the topology automatically.
+
 ### Simulation backend
 
-MATLAB/Simulink is the only supported backend. Every run invokes `matlab -batch` to build and simulate the generated model. If MATLAB is not on `PATH` or the simulation fails, the run aborts with a clear error — there is no synthetic fallback.
+MATLAB/Simulink is the only supported backend. Every run invokes MATLAB to build and simulate the generated model. If MATLAB is not on `PATH` or the simulation fails, the run aborts with a clear error — there is no synthetic fallback.
+
+Two backends are available: **batch** (`matlab -batch`, default) and **MCP** (persistent connection via `matlab_mcp_server.py`). MCP eliminates cold-start overhead between iterations.
 
 **3-phase inverter signal extraction** is handled automatically: ACSS injects a `To Workspace` block onto the `Three-Phase V-I Measurement` output at runtime, so AC voltage waveforms are captured without modifying the `.slx` permanently. The captured 3-phase signal is converted to its peak-amplitude equivalent (×√2) before being compared against `vout_target_v`.
 
@@ -164,11 +189,12 @@ run('run_manual_matlab.m')
 
 ```
 python -m src.main
-  --requirements   PATH    requirements JSON (required)
-  --template-slx   PATH    Simulink .slx template (required)
-  --out            PATH    output root directory (default: runs/)
-  --workflow-mode  MODE    legacy | layered (default: legacy)
-  --human-review           pause after each step for manual approval
+  --requirements    PATH    requirements JSON (required)
+  --template-slx    PATH    Simulink .slx template (optional, auto-generates if omitted)
+  --out             PATH    output root directory (default: runs/)
+  --workflow-mode   MODE    legacy | layered (default: legacy)
+  --matlab-backend  MODE    batch | mcp | auto (default: batch)
+  --human-review            pause after each step for manual approval
 ```
 
 ---
@@ -205,9 +231,11 @@ runs/<timestamp>_<name>/
 ├── iter_XX/
 │   ├── model_payload.json        requirements + topology + sensors + control
 │   ├── summary.json              full iteration snapshot
+│   ├── build_model.m             Simulink model generator (auto-generate mode)
 │   ├── acss_params.m             MATLAB plant + controller parameters
 │   ├── control_sfunc.c           S-Function MEX glue
 │   ├── control_sfunc_wrapper.c   generated control law (C)
+│   ├── acss_model.slx            generated Simulink model (auto-generate mode)
 │   ├── waveforms.json            time-domain simulation output
 │   ├── waveforms.svg             waveform preview plot
 │   ├── waveforms_3ph.json/.svg   three-phase voltage/current (inverter)
@@ -296,7 +324,6 @@ To add knowledge: write compact JSON entries under the appropriate topic folder.
 | `ModuleNotFoundError: No module named 'streamlit'` | Run `pip install -r requirements_streamlit.txt` — streamlit is in the UI requirements file, not the base one |
 | `.\.venv\Scripts\Activate.ps1 ... not recognized` | Run `python -m venv .venv` first to create the virtual environment |
 | `Activate.ps1 cannot be loaded because running scripts is disabled` | Run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`, or skip activation and use `.\.venv\Scripts\python.exe -m streamlit run app.py` |
-| `error: the following arguments are required: --template-slx` | Add `--template-slx examples/topology.slx` |
 | `ValueError: requirements JSON must include non-empty 'design_prompt'` | Add `"design_prompt": "..."` to your requirements JSON |
 | `ACSS is configured for LLM-only execution. No DeepSeek API key found` | Set `DEEPSEEK_API_KEY` environment variable |
 | `control_sfunc.c not detected` | Run from the `manual_matlab_package/` folder; the file must be in the current directory |
@@ -304,6 +331,8 @@ To add knowledge: write compact JSON entries under the appropriate topic folder.
 | `multiple definition of control_sfunc_Start_wrapper` | Regenerate the bundle — old bundles duplicated the C implementation |
 | MATLAB error 5202 `Unable to communicate with required MathWorks services` | Open MATLAB interactively first to complete license activation, then re-run ACSS |
 | `MissingVoutSignal` in MATLAB log | Check that the `.slx` template contains a `Three-Phase V-I Measurement` block — ACSS injects the `To Workspace` block automatically |
+| `MCP connection failed` | Ensure `pip install mcp` is done. The lightweight ACSS MCP server (`matlab_mcp_server.py`) wraps `matlab -batch` and works with any Python version |
+| `Template not found` when using auto-generate | Ensure the base templates exist in `examples/` (`topology.slx`, `topology_inverter.slx`, etc.) |
 
 ---
 

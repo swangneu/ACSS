@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 from pathlib import Path
 from typing import Any
+
+_log = logging.getLogger(__name__)
 
 from src.contracts import EvaluationResult, RequirementSpec, SimulationResult
 from src.evaluation.playbook_extractors import apply_playbook, load_playbook
@@ -140,7 +143,7 @@ class ResponseAnalyzer:
                                 if isinstance(v, bool):
                                     computed[str(k)] = 1.0 if v else 0.0
             except Exception:
-                pass
+                _log.debug('Failed to load evaluation report from %s', eval_path, exc_info=True)
         # Load and parse the actual waveform JSON for FFT/per-phase extractors.
         wave_payload: dict[str, Any] = {}
         if sim.waveform_files:
@@ -149,6 +152,7 @@ class ResponseAnalyzer:
                 try:
                     wave_payload = json.loads(wave_path.read_text(encoding='utf-8'))
                 except Exception:
+                    _log.debug('Failed to load waveform from %s', wave_path, exc_info=True)
                     wave_payload = {}
         if 'fsw_hz' not in wave_payload and req is not None:
             wave_payload['fsw_hz'] = float(getattr(req, 'fsw_hz', 0.0) or 0.0)
@@ -191,6 +195,7 @@ class ResponseAnalyzer:
         try:
             payload = json.loads(report_path.read_text(encoding='utf-8'))
         except Exception:
+            _log.debug('Failed to load evaluation report from %s', report_path, exc_info=True)
             return []
         harness = payload.get('waveform_harness', {})
         if not isinstance(harness, dict):

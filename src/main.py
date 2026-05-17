@@ -13,8 +13,8 @@ def main() -> None:
     parser.add_argument(
         '--template-slx',
         type=Path,
-        required=True,
-        help='Path to Simulink template (.slx)',
+        default=None,
+        help='Path to Simulink template (.slx). If omitted, the AI generates the model from scratch.',
     )
     parser.add_argument(
         '--human-review',
@@ -27,6 +27,13 @@ def main() -> None:
         default='legacy',
         help='Workflow mode. legacy preserves old loop, layered enables architecture-aware diagnosis/decisions.',
     )
+    parser.add_argument(
+        '--matlab-backend',
+        choices=['mcp', 'batch', 'auto'],
+        default='auto',
+        help='MATLAB execution backend. "mcp" uses a persistent MCP server (requires mcp + matlab-mcp-core-server). '
+             '"batch" spawns matlab -batch each time. "auto" tries MCP first, falls back to batch.',
+    )
     args = parser.parse_args()
 
     orch = ACSSOrchestrator(
@@ -35,6 +42,7 @@ def main() -> None:
         template_slx=args.template_slx,
         human_review=args.human_review,
         workflow_mode=args.workflow_mode,
+        matlab_backend=args.matlab_backend,
     )
     run_dir = orch.run()
     print(f'Run complete: {run_dir}')

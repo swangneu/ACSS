@@ -1,3 +1,8 @@
 # Kept minimal on purpose; scaffold uses stdlib only.
 # Optional higher-fidelity Python-only simulator backend:
 # PySpice
+
+# Optional: MATLAB MCP backend (for persistent MATLAB sessions via MCP server)
+# Install with: pip install mcp
+# Also requires: matlab-mcp-core-server on PATH
+# mcp>=1.0.0

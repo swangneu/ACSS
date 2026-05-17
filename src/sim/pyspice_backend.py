@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import logging
 import math
 from pathlib import Path
+
+_log = logging.getLogger(__name__)
 
 from src.contracts import ControlDesign, RequirementSpec, SimulationResult, TopologyDesign, dump_json
 
@@ -62,12 +65,14 @@ def run_pyspice_buck(
         simulator = circuit.simulator(temperature=25, nominal_temperature=25)
         analysis = simulator.transient(step_time=step_s @ u_s, end_time=stop_s @ u_s)
     except Exception:
+        _log.debug('PySpice simulation failed', exc_info=True)
         return None
 
     time_s = [float(x) for x in analysis.time]
     try:
         vout_v = [float(x) for x in analysis['vout']]
     except Exception:
+        _log.debug("PySpice signal extraction failed for 'vout'", exc_info=True)
         return None
 
     if len(time_s) < 10 or len(vout_v) < 10 or len(time_s) != len(vout_v):

@@ -16,30 +16,22 @@ from __future__ import annotations
 
 import ast
 import json
+import logging
 import math
 import operator
 from pathlib import Path
 from typing import Any, Callable
 
+_log = logging.getLogger(__name__)
+
 from src.agents._topology_meta import power_stage_family
+from src.evaluation.metrics import to_float_list
 
 # ---------------------------------------------------------------------------
 # Extractors
 # ---------------------------------------------------------------------------
 
 ExtractorFn = Callable[[dict[str, Any], dict[str, float], dict[str, Any]], float]
-
-
-def _to_float_list(values: object) -> list[float]:
-    if not isinstance(values, list):
-        return []
-    out: list[float] = []
-    for value in values:
-        try:
-            out.append(float(value))
-        except Exception:
-            continue
-    return out
 
 
 def _ratio(payload: dict[str, Any], computed: dict[str, float], args: dict[str, Any]) -> float:
@@ -65,7 +57,7 @@ def _first_peak_to_tail_ratio(payload: dict[str, Any], computed: dict[str, float
     For DC: tail_mean is the steady value; for AC envelopes the harness already
     provides tail_rms_v, which is what we should compare against.
     """
-    vout = _to_float_list(payload.get('vout_v'))
+    vout = to_float_list(payload.get('vout_v'))
     is_ac = bool(computed.get('is_ac_output', False))
     if not vout:
         return float('nan')
@@ -77,7 +69,7 @@ def _first_peak_to_tail_ratio(payload: dict[str, Any], computed: dict[str, float
 
 
 def _zero_crossings_in_tail(payload: dict[str, Any], computed: dict[str, float], args: dict[str, Any]) -> float:
-    vout = _to_float_list(payload.get('vout_v'))
+    vout = to_float_list(payload.get('vout_v'))
     if len(vout) < 20:
         return 0.0
     is_ac = bool(computed.get('is_ac_output', False))
@@ -105,8 +97,8 @@ def _zero_crossings_in_tail(payload: dict[str, Any], computed: dict[str, float],
 def _dominant_osc_hz(payload: dict[str, Any], computed: dict[str, float], args: dict[str, Any]) -> float:
     """FFT-based dominant tail frequency. Returns NaN if signal is too short or fs unknown."""
     signal_key = str(args.get('signal', 'vout_v'))
-    values = _to_float_list(payload.get(signal_key))
-    time_s = _to_float_list(payload.get('time_s'))
+    values = to_float_list(payload.get(signal_key))
+    time_s = to_float_list(payload.get('time_s'))
     if len(values) < 64 or len(time_s) < 64:
         return float('nan')
     n = min(len(values), len(time_s))
@@ -129,8 +121,8 @@ def _dominant_osc_hz(payload: dict[str, Any], computed: dict[str, float], args: 
 
 def _fundamental_hz(payload: dict[str, Any], computed: dict[str, float], args: dict[str, Any]) -> float:
     signal_key = str(args.get('signal', 'va_v'))
-    values = _to_float_list(payload.get(signal_key))
-    time_s = _to_float_list(payload.get('time_s'))
+    values = to_float_list(payload.get(signal_key))
+    time_s = to_float_list(payload.get('time_s'))
     if len(values) < 64 or len(time_s) < 64:
         return float('nan')
     n = min(len(values), len(time_s))
@@ -149,8 +141,8 @@ def _thd_fft(payload: dict[str, Any], computed: dict[str, float], args: dict[str
     Returns NaN if no clear fundamental can be located.
     """
     signal_key = str(args.get('signal', 'va_v'))
-    values = _to_float_list(payload.get(signal_key))
-    time_s = _to_float_list(payload.get('time_s'))
+    values = to_float_list(payload.get(signal_key))
+    time_s = to_float_list(payload.get('time_s'))
     if len(values) < 256 or len(time_s) < 256:
         return float('nan')
     n = min(len(values), len(time_s))
@@ -185,7 +177,7 @@ def _phase_balance_pct(payload: dict[str, Any], computed: dict[str, float], args
     keys = list(args.get('signals', ['va_v', 'vb_v', 'vc_v']))
     rms_per_phase: list[float] = []
     for key in keys:
-        values = _to_float_list(payload.get(key))
+        values = to_float_list(payload.get(key))
         if len(values) < 32:
             return float('nan')
         # Use steady-state tail (last 30%) for a stable RMS estimate.
@@ -307,6 +299,7 @@ def load_playbook(topology: str) -> dict[str, Any]:
             try:
                 data = json.loads(path.read_text(encoding='utf-8'))
             except Exception:
+                _log.debug('Failed to load playbook %s', path, exc_info=True)
                 continue
             families = data.get('applies_to_families') or []
             if isinstance(families, list) and (fam in families or '*' in families):

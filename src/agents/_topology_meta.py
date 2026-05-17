@@ -132,3 +132,54 @@ def is_isolated(topology: str) -> bool:
 
 def is_inverter(topology: str) -> bool:
     return topology.strip().lower() in INVERTER_TOPOLOGIES
+
+
+def control_objective(req: object, topology: str, architecture: str = '') -> str:
+    """Return the control objective string for RAG retrieval."""
+    from src.contracts import RequirementSpec  # avoid circular import at module level
+    fam = power_stage_family(topology)
+    arch = architecture.strip().lower()
+    if fam == 'ac_dc_rectifier':
+        return 'power_factor_correction'
+    if fam == 'dc_ac_inverter':
+        if arch in {'vsg', 'voc', 'voc_aho', 'droop'} or req.weak_grid_mode:
+            return 'grid_forming'
+        return 'grid_following'
+    if fam == 'dc_dc_resonant':
+        return 'voltage_regulation'
+    return 'voltage_regulation'
+
+
+def operating_mode(req: object) -> str:
+    """Return the operating mode string for RAG retrieval."""
+    if req.weak_grid_mode:
+        return 'weak_grid'
+    if req.grid_connected:
+        return 'grid_connected'
+    return 'standalone'
+
+
+def plant_features(req: object, topology: str, architecture: str = '') -> list[str]:
+    """Return plant feature tags for RAG retrieval."""
+    from src.contracts import RequirementSpec  # avoid circular import at module level
+    features: list[str] = []
+    fam = power_stage_family(topology)
+    top = topology.strip().lower()
+    arch = architecture.strip().lower()
+    if req.weak_grid_mode:
+        features.append('weak_grid')
+    if req.grid_connected and fam == 'dc_ac_inverter':
+        features.append('grid_synchronization')
+    if req.load_step_pct is not None:
+        features.append('load_transient')
+    if req.inrush_limit_a is not None:
+        features.append('startup_current_constraint')
+    if fam == 'ac_dc_rectifier':
+        features.append('line_frequency_envelope')
+    if fam == 'dc_dc_resonant':
+        features.append('soft_switching')
+    if top == 'inverter_3ph' and arch == 'dq':
+        features.append('synchronous_frame')
+    if top in {'inverter_3ph_npc', 'inverter_3ph_t_type'}:
+        features.append('neutral_point_balance')
+    return features

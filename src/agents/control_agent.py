@@ -4,6 +4,9 @@ from dataclasses import asdict
 
 from src.agents._topology_meta import (
     FAMILY_ARCHITECTURES,
+    control_objective,
+    operating_mode,
+    plant_features,
     power_stage_family,
     is_resonant,
 )
@@ -176,9 +179,9 @@ class ControlAgent:
             topology=topology.topology,
             architecture=architecture,
             power_stage_family=power_stage_family(topology.topology),
-            control_objective=_control_objective(req, topology.topology, architecture),
-            operating_mode=_operating_mode(req),
-            plant_features=_plant_features(req, topology.topology, architecture),
+            control_objective=control_objective(req, topology.topology, architecture),
+            operating_mode=operating_mode(req),
+            plant_features=plant_features(req, topology.topology, architecture),
             tags=_control_tags(req, strategy),
             top_k=3,
         )
@@ -217,41 +220,3 @@ def _normalize_inrush(value: str) -> str:
     return v
 
 
-def _control_objective(req: RequirementSpec, topology: str, architecture: str) -> str:
-    fam = power_stage_family(topology)
-    arch = architecture.strip().lower()
-    if fam == 'ac_dc_rectifier':
-        return 'power_factor_correction'
-    if fam == 'dc_ac_inverter':
-        if arch in {'vsg', 'voc', 'voc_aho', 'droop'} or req.weak_grid_mode:
-            return 'grid_forming'
-        return 'grid_following'
-    return 'voltage_regulation'
-
-
-def _operating_mode(req: RequirementSpec) -> str:
-    if req.weak_grid_mode:
-        return 'weak_grid'
-    if req.grid_connected:
-        return 'grid_connected'
-    return 'standalone'
-
-
-def _plant_features(req: RequirementSpec, topology: str, architecture: str) -> list[str]:
-    features: list[str] = []
-    fam = power_stage_family(topology)
-    top = topology.strip().lower()
-    arch = architecture.strip().lower()
-    if req.load_step_pct is not None:
-        features.append('load_transient')
-    if req.inrush_limit_a is not None:
-        features.append('startup_current_constraint')
-    if req.weak_grid_mode:
-        features.append('weak_grid')
-    if top == 'inverter_3ph' and arch == 'dq':
-        features.append('synchronous_frame')
-    if fam == 'dc_dc_resonant':
-        features.append('soft_switching')
-    if top in {'inverter_3ph_npc', 'inverter_3ph_t_type'}:
-        features.append('neutral_point_balance')
-    return features

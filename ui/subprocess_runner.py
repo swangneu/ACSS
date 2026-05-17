@@ -10,9 +10,10 @@ from pathlib import Path
 
 def launch_run(
     req_json_path: Path,
-    slx_path: Path,
+    slx_path: Path | str,
     out_dir: Path,
     workflow_mode: str,
+    matlab_backend: str = "auto",
 ) -> dict:
     """Spawn `python -m src.main` as a subprocess and start draining its stdout.
 
@@ -25,10 +26,13 @@ def launch_run(
     cmd = [
         sys.executable, "-m", "src.main",
         "--requirements", str(req_json_path),
-        "--template-slx", str(slx_path),
         "--out", str(out_dir),
         "--workflow-mode", workflow_mode,
+        "--matlab-backend", matlab_backend,
     ]
+    # Only pass --template-slx when a template path is provided.
+    if slx_path:
+        cmd.extend(["--template-slx", str(slx_path)])
     # PYTHONUNBUFFERED ensures print() reaches the pipe immediately even on Windows
     env = {**os.environ, "PYTHONUNBUFFERED": "1"}
 

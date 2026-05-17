@@ -4,6 +4,9 @@ from dataclasses import asdict
 
 from src.agents._topology_meta import (
     FAMILY_ARCHITECTURES,
+    control_objective,
+    operating_mode,
+    plant_features,
     power_stage_family,
     is_resonant,
 )
@@ -95,10 +98,10 @@ class ControlStrategyAgent:
             topic='strategy',
             topology=topology.topology,
             power_stage_family=power_stage_family(topology.topology),
-            control_objective=_control_objective(req, topology.topology),
-            operating_mode=_operating_mode(req),
+            control_objective=control_objective(req, topology.topology),
+            operating_mode=operating_mode(req),
             revision_trigger=_revision_trigger(previous_evaluation),
-            plant_features=_plant_features(req, topology.topology),
+            plant_features=plant_features(req, topology.topology),
             tags=_strategy_tags(req, previous_evaluation),
             top_k=3,
         )
@@ -130,44 +133,6 @@ def _strategy_tags(req: RequirementSpec, previous_evaluation: EvaluationResult |
     if previous_evaluation and not previous_evaluation.passed:
         tags.append('revision')
     return tags
-
-
-def _control_objective(req: RequirementSpec, topology: str) -> str:
-    fam = power_stage_family(topology)
-    if fam == 'ac_dc_rectifier':
-        return 'power_factor_correction'
-    if fam == 'dc_ac_inverter':
-        return 'grid_forming' if req.weak_grid_mode else 'grid_following'
-    if fam == 'dc_dc_resonant':
-        return 'voltage_regulation'   # achieved via frequency control
-    return 'voltage_regulation'
-
-
-def _operating_mode(req: RequirementSpec) -> str:
-    if req.weak_grid_mode:
-        return 'weak_grid'
-    if req.grid_connected:
-        return 'grid_connected'
-    return 'standalone'
-
-
-def _plant_features(req: RequirementSpec, topology: str) -> list[str]:
-    features: list[str] = []
-    fam = power_stage_family(topology)
-    top = topology.strip().lower()
-    if req.weak_grid_mode:
-        features.append('weak_grid')
-    if req.grid_connected and fam == 'dc_ac_inverter':
-        features.append('grid_synchronization')
-    if req.load_step_pct is not None:
-        features.append('load_transient')
-    if fam == 'ac_dc_rectifier':
-        features.append('line_frequency_envelope')
-    if fam == 'dc_dc_resonant':
-        features.append('soft_switching')
-    if top in {'inverter_3ph_npc', 'inverter_3ph_t_type'}:
-        features.append('neutral_point_balance')
-    return features
 
 
 def _revision_trigger(previous_evaluation: EvaluationResult | None) -> str:

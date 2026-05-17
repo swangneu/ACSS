@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 from pathlib import Path
+
+_log = logging.getLogger(__name__)
 
 from src.contracts import ControlDesign, RequirementSpec, SimulationResult, TopologyDesign, dump_json
 
@@ -53,6 +56,7 @@ class VisualizationAgent:
         try:
             payload = json.loads(path.read_text(encoding='utf-8'))
         except Exception:
+            _log.debug('Failed to load waveform from %s', path, exc_info=True)
             return None
         if not isinstance(payload, dict):
             return None

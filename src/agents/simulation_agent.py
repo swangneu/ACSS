@@ -1,17 +1,25 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 from pathlib import Path
 from dataclasses import asdict
 
+_log = logging.getLogger(__name__)
+
 from src.agents._topology_meta import power_stage_family, is_resonant, is_isolated, is_inverter
 from src.contracts import ControlDesign, RequirementSpec, SimulationResult, TopologyDesign, dump_json
-from src.matlab_bridge import run_matlab_stub
+from src.evaluation import metrics
+from src.matlab_backend import MatlabBackend, BatchBackend
+from src.model_builder import SimulinkModelBuilder
 from src.slx_template import load_template_info
 
 
 class SimulationAgent:
+    def __init__(self, backend: MatlabBackend | None = None) -> None:
+        self._backend = backend or BatchBackend()
+
     def run(
         self,
         req: RequirementSpec,
@@ -24,15 +32,31 @@ class SimulationAgent:
         template_path = _pick_template_path(topology, req, template_override)
         if template_override is not None and not template_path.exists():
             raise FileNotFoundError(f"Template .slx not found: {template_path}")
-        template_info = load_template_info(template_path) if template_path.exists() else None
+
+        # When no template was explicitly provided, use the model builder
+        # to generate the Simulink model from scratch.
+        use_model_builder = (template_override is None)
+        if use_model_builder:
+            _log.info('No template .slx found — generating build_model.m for %s', topology.topology)
+            builder = SimulinkModelBuilder(topology, req, control)
+            builder.generate_build_script(out_dir)
+            template_info = None
+        else:
+            template_info = load_template_info(template_path)
 
         symbols = template_info.parameter_symbols if template_info else []
         resolved_values, unresolved_symbols = _resolve_parameter_values(req, topology, control, symbols)
-        symbols_for_output = list(symbols)
-        for runtime_symbol in ('Ts', 'Tstop'):
-            if runtime_symbol in resolved_values and runtime_symbol not in symbols_for_output:
-                symbols_for_output.append(runtime_symbol)
+        # When using model builder (no template), include all resolved parameter names
+        # so acss_params.m generates par.L, par.C, etc. that the template's mask variables expect.
+        if use_model_builder:
+            symbols_for_output = sorted(resolved_values.keys())
+        else:
+            symbols_for_output = list(symbols)
+            for runtime_symbol in ('Ts', 'Tstop'):
+                if runtime_symbol in resolved_values and runtime_symbol not in symbols_for_output:
+                    symbols_for_output.append(runtime_symbol)
 
+        template_name = template_path.name if not use_model_builder else 'build_model.m'
         params_m_path = out_dir / 'acss_params.m'
         params_m_path.write_text(
             _render_params_m(
@@ -41,7 +65,7 @@ class SimulationAgent:
                 symbols_for_output,
                 resolved_values,
                 unresolved_symbols,
-                template_path.name,
+                template_name,
                 topology=topology,
             ),
             encoding='utf-8',
@@ -101,13 +125,33 @@ class SimulationAgent:
                     },
                 },
             )
+        else:
+            dump_json(
+                template_meta_path,
+                {
+                    'template': 'build_model.m (AI-generated)',
+                    'parameter_symbols': symbols_for_output,
+                    'generated_parameter_symbols': symbols_for_output,
+                    'resolved_symbols': sorted(resolved_values.keys()),
+                    'unresolved_symbols': unresolved_symbols,
+                    'sfunction': {
+                        'function_name': sfun_name,
+                        'module_name': module_name,
+                        'input_width': input_width,
+                        'output_width': output_width,
+                        'output_mode': output_mode,
+                    },
+                },
+            )
 
         code_files = [str(params_m_path), str(sfunc_wrapper_path)]
         if sfun_glue_path is not None:
             code_files.append(str(sfun_glue_path))
 
+        # When using model builder, pass None as template so MATLAB uses build_model.m.
+        effective_template = None if use_model_builder else template_path
         print(f'[simulation] Running MATLAB for {payload_path.name}; logs under {out_dir}', flush=True)
-        result = run_matlab_stub(payload_path, out_dir, template_path)
+        result = self._backend.execute(payload_path, out_dir, effective_template)
         result.waveform_image_files = _export_waveform_images(result.waveform_files, out_dir)
         result.code_files = code_files
         result.raw = {
@@ -459,6 +503,12 @@ def _resolve_parameter_values(
     c_f = topology.capacitor_uF * 1e-6
     tstop_s = max(0.02, req.settling_time_ms_max * 1e-3 * 5.0)
     turns = getattr(topology, 'turns_ratio', 1.0)
+    i_load = req.vout_target_v / max(r_load, 1e-9)
+
+    # Scale parasitic resistances by component size and current rating.
+    # Typical DCR for a power inductor: ~0.5–5 mΩ at 10–50 A.
+    r_l = max(0.0005, 0.001 * math.sqrt(max(l_h, 1e-6) / 1e-4) / max(math.sqrt(i_load / 10.0), 0.1))
+    r_c = max(0.0002, 0.0005 * math.sqrt(max(c_f, 1e-6) / 1e-4) / max(math.sqrt(i_load / 10.0), 0.1))
 
     base_candidates = {
         'V_source': req.vin_nominal_v,
@@ -473,8 +523,8 @@ def _resolve_parameter_values(
         'Cr': c_f,          # Resonant capacitance alias
         'C_filter': c_f,
         'R_load': r_load,
-        'R_L': 0.02,
-        'R_C': 0.01,
+        'R_L': r_l,
+        'R_C': r_c,
         'Ts': control.sample_time_s,
         'Tstop': tstop_s,
         'N': turns,         # Transformer turns ratio (primary:secondary)
@@ -535,6 +585,7 @@ def _export_waveform_images(waveform_files: list[str], out_dir: Path) -> list[st
             else:
                 vout_v = []
         except Exception:
+            _log.debug('Failed to parse waveform for SVG export', exc_info=True)
             continue
         if len(time_s) < 2 or len(vout_v) < 2 or len(time_s) != len(vout_v):
             continue
@@ -831,7 +882,7 @@ def _metrics_from_waveform(
     """Derive simulation metrics directly from the synthetic waveform data."""
     vout_v = [float(x) for x in waveforms.get('vout_v', [])]
     time_s = [float(x) for x in waveforms.get('time_s', [])]
-    target = max(float(req.vout_target_v), 1e-9)
+    target = float(req.vout_target_v)
 
     if len(vout_v) < 10 or len(time_s) != len(vout_v):
         return {
@@ -841,21 +892,9 @@ def _metrics_from_waveform(
             'efficiency_pct': 90.0,
         }
 
-    # Overshoot from waveform peak.
-    overshoot_pct = max(0.0, (max(vout_v) - target) / target * 100.0)
-
-    # Settling time: last sample outside 2% band.
-    band = target * 0.02
-    last_outside = -1
-    for i, v in enumerate(vout_v):
-        if abs(v - target) > band:
-            last_outside = i
-    settling_time_ms = max(0.0, time_s[last_outside] - time_s[0]) * 1000.0 if last_outside >= 0 else 0.0
-
-    # Ripple from tail 20%.
-    tail_start = int(0.8 * len(vout_v))
-    tail = vout_v[tail_start:]
-    ripple_v_pp = (max(tail) - min(tail)) if tail else 0.0
+    overshoot_pct_val = metrics.overshoot_pct(vout_v, target)
+    settling_time_ms_val = metrics.settling_time_ms(time_s, vout_v, target, tol=0.02)
+    ripple_v_pp_val = metrics.ripple_pp(vout_v, tail_frac=0.2)
 
     # Efficiency: heuristic based on topology family and passives (no waveform equivalent).
     ratio = req.vout_target_v / max(req.vin_nominal_v, 1e-9)
@@ -876,9 +915,9 @@ def _metrics_from_waveform(
     eff = min(99.0, 88.0 + 5.0 * topology_bonus + math.log10(max(topology.inductor_uH, 1.0)))
 
     return {
-        'overshoot_pct': round(overshoot_pct, 3),
-        'settling_time_ms': round(settling_time_ms, 3),
-        'ripple_v_pp': round(ripple_v_pp, 4),
+        'overshoot_pct': round(overshoot_pct_val, 3),
+        'settling_time_ms': round(settling_time_ms_val, 3),
+        'ripple_v_pp': round(ripple_v_pp_val, 4),
         'efficiency_pct': round(eff, 3),
     }
 

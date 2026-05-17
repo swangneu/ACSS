@@ -46,7 +46,23 @@ for k = 1:numel(stale_mex)
     end
 end
 
-if ~isempty(templateSlxPath) && isfile(templateSlxPath)
+% Check for AI-generated build_model.m first (template-free workflow).
+buildModelPath = fullfile(runDir, 'build_model.m');
+if isfile(buildModelPath)
+    fprintf('[ACSS] Found build_model.m — generating Simulink model from scratch\n');
+    addpath(runDir);
+    try
+        build_model();
+        modelPath = fullfile(runDir, 'acss_model.slx');
+        if ~isfile(modelPath)
+            error('build_model did not produce acss_model.slx');
+        end
+        fprintf('[ACSS] Model generated: %s\n', modelPath);
+    catch ME_build
+        fprintf('[ACSS WARNING] build_model.m failed: %s\n', ME_build.message);
+        modelPath = '';
+    end
+elseif ~isempty(templateSlxPath) && isfile(templateSlxPath)
     modelPath = templateSlxPath;
 elseif isfield(payload, 'topology') && isfield(payload.topology, 'topology') && strcmp(string(payload.topology.topology), "inverter_3ph")
     modelPath = fullfile(startDir, 'examples', 'topology_inverter.slx');

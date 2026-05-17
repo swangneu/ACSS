@@ -209,9 +209,11 @@ with st.sidebar:
 
         st.markdown("**Template SLX**")
         slx_files = sorted(EXAMPLES_DIR.glob("*.slx"))
-        slx_names = [str(f) for f in slx_files] + ["(enter path manually)"]
-        slx_choice = st.selectbox("Template file", slx_names)
-        if slx_choice == "(enter path manually)":
+        slx_names = ["(auto-generate)"] + [str(f) for f in slx_files] + ["(enter path manually)"]
+        slx_choice = st.selectbox("Template file", slx_names, help="Select a template or let the AI generate the Simulink model from scratch.")
+        if slx_choice == "(auto-generate)":
+            slx_path_str = ""
+        elif slx_choice == "(enter path manually)":
             slx_path_str = st.text_input("SLX path", value="examples/topology.slx")
         else:
             slx_path_str = slx_choice
@@ -222,6 +224,16 @@ with st.sidebar:
             ["legacy", "layered"],
             index=0,
             help="legacy: sequential loop. layered: adds diagnosis & intelligent decisions.",
+        )
+        matlab_backend = st.selectbox(
+            "MATLAB backend",
+            ["batch", "auto", "mcp"],
+            index=0,
+            help=(
+                "batch: spawn matlab -batch each iteration (default, no extra setup). "
+                "auto: try MCP server first, fall back to batch. "
+                "mcp: persistent MCP server session (requires Python 3.12 + matlab-mcp)."
+            ),
         )
         out_dir_str = st.text_input("Output directory", value="runs")
 
@@ -269,9 +281,10 @@ with st.sidebar:
 
         runner = launch_run(
             req_json_path=tmp_req,
-            slx_path=Path(slx_path_str),
+            slx_path=Path(slx_path_str) if slx_path_str else "",
             out_dir=Path(out_dir_str),
             workflow_mode=wf_mode,
+            matlab_backend=matlab_backend,
         )
         st.session_state.update(
             {
