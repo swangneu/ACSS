@@ -1,0 +1,24 @@
+{
+  "title": "SEPIC Cascaded Tuning Rules",
+  "topic": "tuning",
+  "topology": "sepic",
+  "architecture": "cascaded",
+  "tags": ["sepic", "current_loop", "rhpz", "tuning"],
+  "source_type": "tuning_rule",
+  "source_refs": ["erickson_maksimovic_2001"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Inner current loop",
+      "text": "Sense L1 current for the inner loop. Bandwidth: f_ci ~ fsw/5 to fsw/10. The current loop compensator is typically PI. At light load the RHPZ drops, so the current loop must also slow down — use gain scheduling or keep the current loop bandwidth well below f_RHPZ."
+    },
+    {
+      "heading": "Outer voltage loop",
+      "text": "The voltage-loop crossover must satisfy f_cv < f_RHPZ/4. Since f_RHPZ = R*(1-D)^2/(2*pi*L1), at maximum load (minimum R) and high duty cycle, f_RHPZ is lowest. Design for the worst case. Start with kp = 2*pi*f_cv*C_out and ki = kp * f_cv / 5."
+    },
+    {
+      "heading": "Revision note",
+      "text": "If the SEPIC fails transient specs in CCM, first check if the RHPZ frequency is above the required bandwidth. If not, operating in DCM (discontinuous current through L1) eliminates the RHPZ at the cost of higher ripple current."
+    }
+  ]
+}

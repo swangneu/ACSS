@@ -1,0 +1,29 @@
+{
+  "title": "Full-Bridge Isolated Cascaded Control Tuning",
+  "topic": "tuning",
+  "topology": "full_bridge",
+  "architecture": "cascaded",
+  "power_stage_family": "dc_dc_isolated",
+  "tags": ["full_bridge", "isolated", "cascaded", "tuning"],
+  "source_type": "tuning_rule",
+  "source_refs": ["erickson_maksimovic_2001"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "Bandwidth ordering",
+      "text": "Inner current loop crossover: f_ci ~ fsw/10. Outer voltage loop crossover: f_cv ~ f_ci/5 to f_ci/3. Same bandwidth ordering as forward converter. The current loop handles the primary-side inductor dynamics."
+    },
+    {
+      "heading": "Gain direction",
+      "text": "For the current loop: increase kp until the primary current tracks within one switching cycle. For the voltage loop: increase kp for transient response, increase ki for steady-state accuracy. Full-bridge allows higher duty cycle than forward, so the gain range is wider."
+    },
+    {
+      "heading": "Slope compensation",
+      "text": "Full-bridge can operate at D > 0.5, so slope compensation is mandatory. Ramp slope >= inductor downslope / 2. The slope compensation affects the current-loop gain — account for it in the loop design."
+    },
+    {
+      "heading": "Operating-point sensitivity",
+      "text": "The plant gain varies with input voltage and load. At light load, the LC filter is more resonant (higher Q). Verify voltage-loop stability at both full load and light load. At Vin_max, the duty cycle is smallest and the current-loop gain is lowest."
+    }
+  ]
+}

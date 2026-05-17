@@ -1,0 +1,25 @@
+{
+  "title": "Series Resonant Converter Tuning",
+  "topic": "tuning",
+  "topology": "src",
+  "architecture": "llc_freq_control",
+  "power_stage_family": "dc_dc_resonant",
+  "tags": ["src", "resonant", "frequency_control", "tuning"],
+  "source_type": "tuning_rule",
+  "source_refs": ["steigerwald_1988"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "PI gain starting points",
+      "text": "Same as LLC: kp ~ fr/Vout (Hz/V), ki ~ fr/(5*Vout) (Hz/(V*s)). SRC gain curve is steeper than LLC at light load, so gains may need to be higher. At heavy load, gains should be lower."
+    },
+    {
+      "heading": "Gain direction",
+      "text": "Increasing kp speeds up response but can cause frequency overshoot. If the frequency command oscillates, reduce kp. SRC has narrower control range than LLC — verify the frequency range covers the required input voltage range."
+    },
+    {
+      "heading": "Sample time",
+      "text": "Same as LLC: sample time <= 1/(10*fsw_max). For a 200 kHz SRC, sample at <= 5 us."
+    }
+  ]
+}

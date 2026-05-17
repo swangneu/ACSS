@@ -1,0 +1,40 @@
+{
+  "title": "Systematic Debugging Methodology for Power Converter Controllers",
+  "topic": "revision",
+  "power_stage_family": "generic_power_converter",
+  "tags": ["debugging", "methodology", "systematic", "diagnosis"],
+  "source_type": "revision_rule",
+  "source_refs": ["basso_2012", "erickson_maksimovic_2001"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "Debugging order",
+      "text": "When a converter fails evaluation, diagnose in this order: (1) Implementation — verify sign, scale, wiring, and that the controller output reaches the plant. (2) Plant model — verify the topology template matches the controller. (3) Architecture — verify the control structure matches the plant. (4) Tuning — only after the above three are confirmed."
+    },
+    {
+      "heading": "When output is zero or near-zero",
+      "revision_trigger": "failed_revision",
+      "text": "If the output never approaches the target, this is an implementation issue, not a tuning issue. Check: sensor polarity, controller output polarity, duty-cycle command range, and that the plant template is correctly wired. Do not waste iterations tuning gains."
+    },
+    {
+      "heading": "When output oscillates",
+      "revision_trigger": "excess_ripple",
+      "text": "Oscillations have characteristic frequencies. Near fsw/2: subharmonic instability (add slope compensation). Near the LC resonance: insufficient damping (add active damping or reduce kp). Below fsw/10: integrator windup (add anti-windup). Very low frequency: limit cycle from saturation."
+    },
+    {
+      "heading": "When output overshoots and recovers slowly",
+      "revision_trigger": "overshoot",
+      "text": "Overshoot with slow recovery indicates the controller bandwidth is too low for the disturbance. The fix is usually to add an inner current loop (cascaded structure) rather than increasing the voltage-loop gains. Raising gains alone often makes the overshoot worse."
+    },
+    {
+      "heading": "When gains seem stuck",
+      "revision_trigger": "failed_revision",
+      "text": "If increasing or decreasing gains does not improve the failing metric, the sensitivity probe should detect this. The correct response is to switch architecture, not to keep trying different gain values. The plant may have a fundamental limitation (RHPZ, resonance, gain curve flatness)."
+    },
+    {
+      "heading": "When the same failure repeats across 3+ iterations",
+      "revision_trigger": "failed_revision",
+      "text": "This is the stagnation threshold. The system has tried multiple gain sets and possibly multiple architectures. Remaining possibilities: (1) plant model mismatch (wrong topology template), (2) missing sensor or control loop, (3) fundamental specification incompatibility with the chosen topology."
+    }
+  ]
+}

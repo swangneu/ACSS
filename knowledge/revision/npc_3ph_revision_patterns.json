@@ -1,0 +1,37 @@
+{
+  "title": "NPC Three-Level Revision Patterns",
+  "topic": "revision",
+  "topology": "inverter_3ph_npc",
+  "power_stage_family": "dc_ac_inverter",
+  "tags": ["npc", "three_level", "revision", "neutral_point", "grid_tied"],
+  "source_type": "revision_rule",
+  "source_refs": ["teodorescu_grid_converters_2011"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Neutral-point voltage oscillation",
+      "revision_trigger": "excess_ripple",
+      "text": "If the split DC-bus capacitors oscillate (V_neutral drifts from V_dc/2), reduce the balancing loop gain or increase the DC-bus capacitance. If the oscillation frequency is near the current-loop bandwidth, the balancing and current loops are interacting — decouple them by reducing balancing bandwidth."
+    },
+    {
+      "heading": "THD failure",
+      "revision_trigger": "excess_ripple",
+      "text": "If output current THD fails spec, check: (1) LCL filter resonance is between 10*f_grid and fsw/2, (2) active damping is enabled (capacitor-current feedback), (3) dead-time compensation is applied. Dead-time distortion is worse at low modulation index."
+    },
+    {
+      "heading": "Overshoot from voltage loop",
+      "revision_trigger": "overshoot",
+      "text": "DC-bus overshoot under load step: the voltage loop is too slow or the anti-windup is not working. Reduce voltage-loop kp or add proper anti-windup on the current reference saturation. The three-level topology has more headroom than two-level but the voltage loop design is the same."
+    },
+    {
+      "heading": "Slow settling",
+      "revision_trigger": "slow_settling",
+      "text": "If the DC bus settles slowly after a load step, the voltage-loop bandwidth is too low. Increase kp/ki, but keep f_cv < fsw/100. If the current loop is also slow, the dq decoupling may be incorrect — verify the decoupling terms use the actual filter inductance."
+    },
+    {
+      "heading": "Architecture limit",
+      "revision_trigger": "failed_revision",
+      "text": "If the NPC cannot meet THD or efficiency specs, consider: (1) higher switching frequency (at the cost of switching losses), (2) T-type for lower voltage (<600V DC bus), (3) cascaded H-bridge for higher voltage (>3kV)."
+    }
+  ]
+}

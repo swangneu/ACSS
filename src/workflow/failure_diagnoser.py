@@ -18,7 +18,7 @@ control iteration.
 
 Return JSON only with these exact keys:
   issue_type  — one of: parameter_tuning_issue, implementation_issue,
-                architecture_mismatch, plant_model_mismatch
+                architecture_mismatch, plant_model_mismatch, architecture_limit
   confidence  — float in [0,1]
   rationale   — 2-3 sentences citing specific evidence keys
   evidence    — array of short strings; each item should reference a concrete
@@ -44,6 +44,14 @@ Decision rules:
     template and the controller (e.g. resonant converter run with PI duty
     control, missing measurement block); rare — only choose when the other
     three clearly do not apply.
+  - architecture_limit       : the plant has a fundamental limitation that
+    prevents meeting the specification (RHPZ limits bandwidth below requirement,
+    resonant gain curve too flat at light load, gain curve does not cover the
+    required input voltage range). Choose when: (a) gains are already at bounds,
+    (b) sensitivity shows gains are stuck or moving the wrong way, (c) the
+    pathology suggests a plant-level limitation (rhpz_undershoot, gain_saturation,
+    frequency_hunting), (d) the same architecture has been tried 2+ times without
+    improvement. Recommend switching topology or control architecture.
 
 Treat user_intent.priorities as your tie-breaker: when two issue_types are
 equally plausible, prefer the one whose fix advances the highest-priority

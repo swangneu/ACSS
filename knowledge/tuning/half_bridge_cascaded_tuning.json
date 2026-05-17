@@ -1,0 +1,24 @@
+{
+  "title": "Half-Bridge Cascaded Tuning Rules",
+  "topic": "tuning",
+  "topology": "half_bridge",
+  "architecture": "cascaded",
+  "tags": ["half_bridge", "current_mode", "isolation", "tuning"],
+  "source_type": "tuning_rule",
+  "source_refs": ["erickson_maksimovic_2001", "kazimierczuk_2008"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Inner current loop",
+      "text": "Per-switch peak-current sensing with leading-edge blanking (100-300ns). Current-loop bandwidth: f_ci ~ fsw/5. Slope compensation: ramp >= V_out*N_pri/N_sec / (2*L_out*fsw). The split-capacitor midpoint drifts if current sensing is asymmetric."
+    },
+    {
+      "heading": "Outer voltage loop",
+      "text": "Output ripple frequency = 2*fsw. Voltage-loop crossover: f_cv ~ 2*fsw/10 to 2*fsw/20. PI compensator. The split-capacitor midpoint voltage should be monitored — if it drifts more than 5% from V_in/2, the current sensing or duty cycle is asymmetric."
+    },
+    {
+      "heading": "Revision note",
+      "text": "If the half-bridge shows split-capacitor midpoint drift, verify: (1) per-switch current sensing (not averaged), (2) equal blanking times, (3) symmetric gate drive. If leakage inductance causes voltage spikes, add an RCD snubber or active clamp."
+    }
+  ]
+}

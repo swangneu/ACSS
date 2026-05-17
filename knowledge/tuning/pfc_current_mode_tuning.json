@@ -1,0 +1,30 @@
+{
+  "title": "PFC Current-Mode Tuning Rules",
+  "topic": "tuning",
+  "topology": "pfc",
+  "architecture": "pfc_current_mode",
+  "power_stage_family": "ac_dc_pfc",
+  "control_objective": "current_shaping",
+  "tags": ["pfc", "current_loop", "inrush", "thd", "twice_line_ripple"],
+  "source_type": "tuning_rule",
+  "source_refs": ["erickson_maksimovic_2001", "ti_current_mode_control_handbook"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Voltage-loop bandwidth",
+      "text": "Set the outer voltage-loop crossover well below twice the line frequency — typically 10 to 20 Hz for 50/60 Hz mains. A higher voltage-loop bandwidth distorts the current reference by passing the 100/120 Hz bulk-capacitor ripple into the inner loop, ruining input THD."
+    },
+    {
+      "heading": "Twice-line-frequency notch",
+      "text": "Adding a notch or low-pass filter on the voltage-loop error at 2×f_line lets the loop tolerate the unavoidable bus ripple without distorting the current reference. Sizing the notch is more effective than dropping the loop bandwidth aggressively low — the latter hurts transient recovery on load steps."
+    },
+    {
+      "heading": "Current-loop bandwidth",
+      "text": "Place the inner current-loop crossover near fsw/10 so the line-current waveform tracks the rectified sine reference with negligible phase shift. A current loop slower than line frequency / 100 will cause leading or lagging current distortion that registers as poor power factor regardless of THD."
+    },
+    {
+      "heading": "Inrush handling",
+      "text": "PFC inrush limiting is rarely solved by the current loop alone. Verify the soft-start ramps the current reference rather than the duty, and that the bulk-cap pre-charge path is sized to avoid hitting the current limit during startup. Loop tuning cannot save a missing pre-charge resistor."
+    }
+  ]
+}

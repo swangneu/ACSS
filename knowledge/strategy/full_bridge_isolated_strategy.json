@@ -1,0 +1,34 @@
+{
+  "title": "Full-Bridge Isolated Converter Strategy",
+  "topic": "strategy",
+  "topology": "full_bridge",
+  "architecture": "cascaded",
+  "power_stage_family": "dc_dc_isolated",
+  "control_objective": "voltage_regulation",
+  "operating_mode": "standalone",
+  "plant_features": ["four_switches", "high_power"],
+  "tags": ["full_bridge", "isolated", "high_power", "current_loop"],
+  "source_type": "controller_pattern",
+  "source_refs": ["erickson_maksimovic_2001"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "When to use",
+      "text": "Use full-bridge isolated converter for >200W applications. Four primary switches allow duty cycle > 0.5 and full bipolar excitation of the transformer. Vout = Vin*D/N. Most efficient use of the transformer at high power."
+    },
+    {
+      "heading": "Controller structure",
+      "text": "Use current-mode control with peak or average sensing on the primary. For ZVS operation, use phase-shift control between the two legs (see PSFB). Without phase-shift, use conventional PWM with slope compensation."
+    },
+    {
+      "heading": "Constraint",
+      "topic": "constraints",
+      "text": "Four switches increase cost and complexity. Ensure dead-time between complementary switches to prevent shoot-through. Current sensing on the primary requires a current transformer or sense resistor in the primary path."
+    },
+    {
+      "heading": "Escalation trigger",
+      "revision_trigger": "efficiency_shortfall",
+      "text": "If efficiency is below target, consider phase-shift control (PSFB) for ZVS on primary switches. This reduces switching losses significantly at the cost of some duty-cycle loss."
+    }
+  ]
+}

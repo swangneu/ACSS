@@ -1,0 +1,32 @@
+{
+  "title": "CLLC Resonant Converter Revision Patterns",
+  "topic": "revision",
+  "topology": "cllc_resonant",
+  "power_stage_family": "dc_dc_resonant",
+  "tags": ["cllc", "resonant", "revision", "bidirectional", "symmetric"],
+  "source_type": "revision_rule",
+  "source_refs": ["steigerwald_1988"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Gain curve steepness",
+      "revision_trigger": "overshoot",
+      "text": "CLLC has a symmetric tank (series L and C on both sides) with a steep gain curve near resonance. If overshoot occurs, move the operating point to the inductive side (f > f_r) where the gain is flatter. The gain curve nonlinearity is worse than LLC near resonance."
+    },
+    {
+      "heading": "Bidirectional mode switching",
+      "revision_trigger": "slow_settling",
+      "text": "CLLC is designed for bidirectional power flow. If settling is slow during direction reversal, the frequency must sweep through the resonant point. Ensure the control can handle the zero-crossing of power without losing ZVS on both sides."
+    },
+    {
+      "heading": "Light-load flat gain",
+      "revision_trigger": "failed_revision",
+      "text": "Like LLC, the CLLC gain curve flattens at light load. If regulation fails at light load, consider burst mode or a wider frequency range. The symmetric tank means both sides have the same resonance — the gain curve shape is identical in both directions."
+    },
+    {
+      "heading": "Tank redesign",
+      "revision_trigger": "failed_revision",
+      "text": "If the CLLC cannot meet specs, the symmetric tank may need asymmetric redesign — different L_r/C_r values on primary and secondary. This breaks the symmetry but allows optimizing for a specific power direction."
+    }
+  ]
+}

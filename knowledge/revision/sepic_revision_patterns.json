@@ -1,0 +1,37 @@
+{
+  "title": "SEPIC Revision Patterns",
+  "topic": "revision",
+  "topology": "sepic",
+  "power_stage_family": "dc_dc_nonisolated",
+  "tags": ["sepic", "revision", "rhpz", "coupled_inductor"],
+  "source_type": "revision_rule",
+  "source_refs": ["erickson_maksimovic_2001"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Overshoot from RHPZ",
+      "revision_trigger": "overshoot",
+      "text": "SEPIC overshoot in CCM is caused by the RHPZ limiting the voltage-loop bandwidth. If the crossover is above f_RHPZ/4, the phase margin collapses. Reduce kp until the crossover is below f_RHPZ/4, or switch to DCM operation which eliminates the RHPZ."
+    },
+    {
+      "heading": "Slow settling from RHPZ limit",
+      "revision_trigger": "slow_settling",
+      "text": "If the SEPIC settles slowly and gains are already conservative, the RHPZ frequency at the operating point may be very low (high D, light load). Check f_RHPZ = R*(1-D)^2/(2*pi*L1). If f_RHPZ < 10*f_required, the topology cannot meet the spec in CCM."
+    },
+    {
+      "heading": "Excess ripple from coupling capacitor",
+      "revision_trigger": "excess_ripple",
+      "text": "SEPIC output ripple depends on the coupling capacitor C1 and output capacitor ESR. The coupling capacitor carries high RMS current. If ripple is excessive, increase C1 or reduce its ESR before changing controller gains."
+    },
+    {
+      "heading": "Efficiency from coupled-inductor losses",
+      "revision_trigger": "efficiency_shortfall",
+      "text": "SEPIC efficiency is limited by the coupled-inductor losses (winding and core) and the coupling capacitor RMS current. The controller cannot improve efficiency — it is a plant-side issue. Consider reducing coupling capacitor ESR or using a better inductor core material."
+    },
+    {
+      "heading": "Architecture limit",
+      "revision_trigger": "failed_revision",
+      "text": "If the SEPIC fails across multiple iterations with the RHPZ below required bandwidth, switch to DCM operation or consider a different topology (buck-boost for non-isolated, flyback for isolated)."
+    }
+  ]
+}

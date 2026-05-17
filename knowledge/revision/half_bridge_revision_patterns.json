@@ -1,0 +1,37 @@
+{
+  "title": "Half-Bridge Revision Patterns",
+  "topic": "revision",
+  "topology": "half_bridge",
+  "power_stage_family": "dc_dc_isolated",
+  "tags": ["half_bridge", "revision", "split_capacitor", "leakage"],
+  "source_type": "revision_rule",
+  "source_refs": ["erickson_maksimovic_2001"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Overshoot from slow voltage loop",
+      "revision_trigger": "overshoot",
+      "text": "Half-bridge overshoot: same as push-pull — the voltage loop is too slow. Switch to peak-current-mode if not already. The split-capacitor midpoint drifts under load step, adding a transient disturbance that the voltage loop must handle."
+    },
+    {
+      "heading": "Slow settling",
+      "revision_trigger": "slow_settling",
+      "text": "Check: (1) current loop bandwidth f_ci ~ fsw/5, (2) slope compensation not excessive, (3) split-capacitor midpoint recovery. The midpoint drift creates an effective input voltage disturbance that slows settling."
+    },
+    {
+      "heading": "Excess ripple from leakage inductance",
+      "revision_trigger": "excess_ripple",
+      "text": "Leakage inductance ring with MOSFET Coss causes high-frequency oscillation on the primary. Add RCD snubbers. On the secondary, verify the output capacitor ESR is low enough for the ripple spec."
+    },
+    {
+      "heading": "Split-capacitor midpoint drift",
+      "revision_trigger": "failed_revision",
+      "text": "If the split-capacitor midpoint drifts >5% from V_in/2, the transformer gets a DC bias. Causes: asymmetric gate drive, unequal blanking times, or unbalanced current sensing. Verify per-switch current sensing and symmetric layout."
+    },
+    {
+      "heading": "Architecture limit",
+      "revision_trigger": "failed_revision",
+      "text": "If the half-bridge cannot handle the power level (>1kW) or the voltage stress exceeds switch ratings, upgrade to full-bridge. Full-bridge uses all four quadrant switches and can deliver twice the power at the same switch stress."
+    }
+  ]
+}

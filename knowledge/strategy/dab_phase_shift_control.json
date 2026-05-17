@@ -1,0 +1,38 @@
+{
+  "title": "DAB Phase-Shift Control Strategy",
+  "topic": "strategy",
+  "topology": "dab",
+  "architecture": "cascaded",
+  "power_stage_family": "dc_dc_isolated",
+  "control_objective": "voltage_regulation",
+  "operating_mode": "bidirectional",
+  "plant_features": ["bidirectional", "phase_shift", "soft_switching"],
+  "tags": ["dab", "phase_shift", "bidirectional", "zvs"],
+  "source_type": "controller_pattern",
+  "source_refs": ["de_doncker_dab"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "When to use",
+      "text": "Use phase-shift control for DAB converters. The DAB uses two full bridges with a series inductance. Power transfer is controlled by the phase shift between primary and secondary bridges. Single-phase-shift (SPS) is simplest but has high circulating current at light load."
+    },
+    {
+      "heading": "Design formulas",
+      "text": "Power transfer (SPS): P = Vin*Vout*phi*(pi-|phi|)/(2*pi*L*fsw*N) where phi is phase shift in radians. Maximum power at phi = pi/2. Negative phi reverses power flow. Extended-phase-shift (EPS) adds duty-cycle ratio to reduce circulating current."
+    },
+    {
+      "heading": "Controller structure",
+      "text": "Outer voltage loop PI generates a phase-shift command. Inner dynamics are fast (one switching cycle delay). Phase-shift command bounded to [-pi, pi]. Anti-windup is critical because phase-shift saturates at the power limit."
+    },
+    {
+      "heading": "Constraint",
+      "topic": "constraints",
+      "text": "ZVS is maintained when the transformer current reverses polarity during dead time. At light load or small phase shift, ZVS is lost and switching losses increase dramatically. This is the main limitation of SPS control."
+    },
+    {
+      "heading": "Escalation trigger",
+      "revision_trigger": "efficiency_shortfall",
+      "text": "If SPS control cannot maintain ZVS across the load range, switch to extended-phase-shift (EPS) or triple-phase-shift (TPS) modulation. These add degrees of freedom for ZVS maintenance at light load at the cost of more complex control."
+    }
+  ]
+}

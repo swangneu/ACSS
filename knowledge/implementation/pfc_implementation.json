@@ -1,0 +1,23 @@
+{
+  "title": "PFC Implementation Patterns",
+  "topic": "implementation",
+  "power_stage_family": "ac_dc_rectifier",
+  "tags": ["pfc", "multi_loop", "inrush", "line_sensing"],
+  "source_type": "implementation_rule",
+  "source_refs": ["erickson_maksimovic_2001"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "Multi-loop structure",
+      "text": "The PFC has three distinct loops: (1) inner current loop (fastest, tracks sinusoidal reference), (2) outer voltage loop (slowest, regulates bulk capacitor), (3) feedforward of rectified line voltage. Current reference = voltage-loop output * rectified line voltage shape."
+    },
+    {
+      "heading": "Inrush limiting",
+      "text": "PFC inrush is severe because the bulk capacitor charges through the boost inductor with no current limit at startup. Use a pre-charge resistor (bypassed after startup) or ramp the current reference from zero. The current loop alone cannot prevent inrush."
+    },
+    {
+      "heading": "Line-frequency sensing",
+      "text": "The rectified line voltage shape must be sensed accurately for the current reference. Use a dedicated voltage divider and filter. If the line voltage sensor has offset or distortion, the input current will have the same distortion."
+    }
+  ]
+}

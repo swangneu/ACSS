@@ -1,0 +1,32 @@
+{
+  "title": "Series Resonant Converter Revision Patterns",
+  "topic": "revision",
+  "topology": "src",
+  "power_stage_family": "dc_dc_resonant",
+  "tags": ["src", "resonant", "revision", "gain_curve"],
+  "source_type": "revision_rule",
+  "source_refs": ["steigerwald_1988"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Gain <= 1 limitation",
+      "revision_trigger": "failed_revision",
+      "text": "The SRC (series resonant converter) has a maximum voltage gain of 1 — it cannot step up the voltage. If the output cannot reach the target, verify the turns ratio is sufficient. The SRC is fundamentally limited to V_out <= V_in*N_sec/N_pri."
+    },
+    {
+      "heading": "Light-load regulation loss",
+      "revision_trigger": "slow_settling",
+      "text": "At very light load, the SRC gain curve becomes extremely flat near resonance. The converter cannot regulate because large frequency changes produce negligible output change. This is a fundamental SRC limitation — consider LLC or LCC which have better light-load regulation."
+    },
+    {
+      "heading": "Subharmonic oscillation",
+      "revision_trigger": "excess_ripple",
+      "text": "If the SRC shows oscillation at sub-harmonics of the switching frequency, the operating point may have jumped to the capacitive side (below resonance). Ensure the control always operates on the inductive side (f > f_r) for ZVS and stability."
+    },
+    {
+      "heading": "Architecture limit",
+      "revision_trigger": "failed_revision",
+      "text": "If the SRC cannot regulate across the required load range, upgrade to LLC (adds parallel inductor for better gain range) or LCC (adds parallel capacitor for high-voltage applications). The SRC is best suited for applications with narrow load range and V_out < V_in*N."
+    }
+  ]
+}

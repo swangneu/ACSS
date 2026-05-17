@@ -1,0 +1,36 @@
+{
+  "title": "Resonant Converter Revision Patterns",
+  "topic": "revision",
+  "power_stage_family": "dc_dc_resonant",
+  "tags": ["resonant", "llc", "src", "lcc", "cllc", "revision", "frequency_control"],
+  "source_type": "revision_rule",
+  "source_refs": ["steigerwald_1988"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "Overshoot from gain curve steepness",
+      "revision_trigger": "overshoot",
+      "text": "Resonant converter overshoot is caused by the steep gain curve near resonance. A small frequency overshoot near the resonant point causes a large gain change. Reduce kp or add a rate limiter on the frequency command."
+    },
+    {
+      "heading": "Slow settling from flat gain at light load",
+      "revision_trigger": "slow_settling",
+      "text": "Resonant converters at light load have inherently flat gain curves, making the plant gain very low. This is a plant limitation. Gain scheduling by load current can help. If the specification requires fast settling at light load, the tank design may need to change."
+    },
+    {
+      "heading": "Ripple from ZCS boundary",
+      "revision_trigger": "excess_ripple",
+      "text": "Resonant converter ripple is determined by the tank Q and the output capacitor. At resonance, the current waveform is nearly sinusoidal. If ripple is high, check whether operating near the ZCS boundary where diode reverse recovery causes high-frequency ringing."
+    },
+    {
+      "heading": "Efficiency from circulating energy",
+      "revision_trigger": "efficiency_shortfall",
+      "text": "Resonant converter efficiency is dominated by circulating energy in the tank. Operating closer to fr reduces circulating energy but narrows the regulation range. The magnetizing current should be minimized while maintaining ZVS."
+    },
+    {
+      "heading": "Tank design mismatch",
+      "revision_trigger": "failed_revision",
+      "text": "If resonant converter fails across iterations, the tank parameters (Lr, Cr, Lm) are likely mismatched to the requirements. This requires redesigning the resonant tank, not retuning the controller. The gain curve must cover the required input voltage range at all loads."
+    }
+  ]
+}

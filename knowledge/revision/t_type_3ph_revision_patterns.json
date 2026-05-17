@@ -1,0 +1,37 @@
+{
+  "title": "T-Type Three-Level Revision Patterns",
+  "topic": "revision",
+  "topology": "inverter_3ph_t_type",
+  "power_stage_family": "dc_ac_inverter",
+  "tags": ["t_type", "three_level", "revision", "neutral_point", "grid_tied"],
+  "source_type": "revision_rule",
+  "source_refs": ["teodorescu_grid_converters_2011"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Neutral-point voltage oscillation",
+      "revision_trigger": "excess_ripple",
+      "text": "Same as NPC: reduce balancing loop gain or increase DC-bus capacitance. The T-type bidirectional switches carry more current during zero-level, so thermal stress can cause asymmetric behavior if the switches are overheating."
+    },
+    {
+      "heading": "THD failure",
+      "revision_trigger": "excess_ripple",
+      "text": "Same as NPC: check LCL filter resonance, active damping, dead-time compensation. T-type has slightly different harmonic distortion pattern because the zero-level path has different impedance than NPC."
+    },
+    {
+      "heading": "Overshoot from voltage loop",
+      "revision_trigger": "overshoot",
+      "text": "Same as NPC: reduce voltage-loop kp or fix anti-windup. The voltage-loop design is identical to NPC — the three-level structure does not change the voltage-loop dynamics."
+    },
+    {
+      "heading": "Efficiency below spec",
+      "revision_trigger": "efficiency_shortfall",
+      "text": "T-type efficiency is dominated by the bidirectional switch conduction losses during zero-level. At high DC-bus voltage (>600V), the bidirectional switches must be higher-voltage-rated with higher conduction loss. Consider switching to NPC topology."
+    },
+    {
+      "heading": "Architecture limit",
+      "revision_trigger": "failed_revision",
+      "text": "If the T-type cannot meet specs at the required voltage level, consider NPC (better at >600V) or two-level with higher switching frequency (simpler but higher THD). For very high voltage, cascaded H-bridge is the standard choice."
+    }
+  ]
+}

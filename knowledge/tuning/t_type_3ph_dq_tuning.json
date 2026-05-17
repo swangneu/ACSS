@@ -1,0 +1,24 @@
+{
+  "title": "T-Type Three-Level DQ Tuning Rules",
+  "topic": "tuning",
+  "topology": "inverter_3ph_t_type",
+  "architecture": "dq",
+  "tags": ["t_type", "three_level", "dq", "grid_tied", "tuning"],
+  "source_type": "tuning_rule",
+  "source_refs": ["teodorescu_grid_converters_2011"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Current loop",
+      "text": "Identical to NPC: dq-frame PI, crossover f_ci ~ fsw/10, dq decoupling, active damping for LCL filter. The T-type has different loss distribution (bidirectional switches carry more current during zero-level) but the control structure is the same."
+    },
+    {
+      "heading": "Voltage loop",
+      "text": "DC-bus PI controller. Crossover f_cv ~ fsw/100. Anti-windup on current reference saturation. The voltage loop design is identical to NPC."
+    },
+    {
+      "heading": "Neutral-point balancing loop",
+      "text": "Same balancing algorithm as NPC. The bidirectional neutral-point switches carry the balancing current — their current rating limits the balancing capability. Reduce balancing gain if the switches are thermally stressed."
+    }
+  ]
+}

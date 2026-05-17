@@ -73,7 +73,15 @@ class HypothesisManager:
                 'switch_controller_architecture, request_model_plant_inspection. '
                 f'Stagnation metrics: stagnant_iterations={stagnant}, architecture_switches={arch_switches}. '
                 f'Sensitivity probe: responsiveness={responsiveness}. '
-                'If stagnant_iterations >= 3, strongly prefer switch_controller_architecture or request_model_plant_inspection.'
+                'DECISION RULES:\n'
+                '- If stagnant_iterations >= 2, prefer switch_controller_architecture over retune_parameters.\n'
+                '- If stagnant_iterations >= 3, strongly prefer switch_controller_architecture or request_model_plant_inspection.\n'
+                '- If architecture_switches >= 2 and stagnant_iterations >= 2, prefer request_model_plant_inspection.\n'
+                '- If responsiveness == "monotonic_wrong", the issue is sign/polarity — use patch_implementation, not retune.\n'
+                '- If responsiveness == "none", gains are not working — use switch_controller_architecture.\n'
+                '- If the diagnosis is architecture_limit, use switch_controller_architecture.\n'
+                '- retune_parameters should only be chosen when the metric is still moving with gain changes '
+                'and the architecture has not been tried 2+ times.'
             ),
             f'analysis={analysis}\ndiagnosis={diagnosis}\nprevious_state={previous_state}\nsensitivity={sensitivity or {}}',
             temperature=0.0,

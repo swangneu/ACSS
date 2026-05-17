@@ -1,0 +1,37 @@
+{
+  "title": "Full-Bridge Isolated Revision Patterns",
+  "topic": "revision",
+  "topology": "full_bridge",
+  "power_stage_family": "dc_dc_isolated",
+  "tags": ["full_bridge", "revision", "phase_shift", "zvs"],
+  "source_type": "revision_rule",
+  "source_refs": ["erickson_maksimovic_2001"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Overshoot from slow voltage loop",
+      "revision_trigger": "overshoot",
+      "text": "Full-bridge overshoot: same as other isolated topologies — the voltage loop is too slow. With phase-shift modulation, the effective duty cycle changes nonlinearly with phase shift. Use peak-current-mode control for linearizing the power transfer."
+    },
+    {
+      "heading": "Slow settling from phase-shift range",
+      "revision_trigger": "slow_settling",
+      "text": "If the full-bridge settles slowly, check: (1) Is the phase-shift range adequate? At light load, the minimum phase shift may be too large, causing over-regulation. (2) Is the current loop fast enough? f_ci ~ fsw/5."
+    },
+    {
+      "heading": "Excess ripple from leakage inductance",
+      "revision_trigger": "excess_ripple",
+      "text": "Leakage inductance causes ringing on the primary during switching transitions. Add snubbers or use the parasitic ringing for ZVS (phase-shift full-bridge). Output ripple is set by the output inductor and capacitor — recheck passives."
+    },
+    {
+      "heading": "ZVS loss at light load",
+      "revision_trigger": "efficiency_shortfall",
+      "text": "Phase-shift full-bridge loses ZVS at light load because the energy stored in the leakage inductance is insufficient to charge/discharge the MOSFET capacitances. The body diode conduction increases losses. Consider adaptive dead-time or burst mode at light load."
+    },
+    {
+      "heading": "Architecture limit",
+      "revision_trigger": "failed_revision",
+      "text": "If the full-bridge fails across iterations, consider: (1) PSFB (phase-shifted full-bridge) for better ZVS range, (2) resonant transition for wider ZVS, (3) LLC if the conversion ratio is fixed."
+    }
+  ]
+}

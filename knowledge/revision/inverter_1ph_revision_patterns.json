@@ -1,0 +1,32 @@
+{
+  "title": "Single-Phase Inverter Revision Patterns",
+  "topic": "revision",
+  "topology": "inverter_1ph",
+  "power_stage_family": "dc_ac_inverter",
+  "tags": ["inverter_1ph", "revision", "thd", "voltage_regulation"],
+  "source_type": "revision_rule",
+  "source_refs": ["mohan_undeland_robbins_2003"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "THD from dead-time distortion",
+      "revision_trigger": "excess_ripple",
+      "text": "Dead-time causes voltage distortion that is worst at low modulation index. Add dead-time compensation (feedforward voltage offset proportional to the sign of the output current). If THD still fails, increase the LC filter size or switching frequency."
+    },
+    {
+      "heading": "Voltage overshoot on load step",
+      "revision_trigger": "overshoot",
+      "text": "Single-phase inverter overshoot under load step: the voltage loop is too slow. Increase kp. If using PR (proportional-resonant) controller, increase the resonant gain at the fundamental frequency. Add current limiting to prevent overcurrent during transients."
+    },
+    {
+      "heading": "Slow settling from LC resonance",
+      "revision_trigger": "slow_settling",
+      "text": "If the inverter settles slowly after a load step, the LC filter resonance may be under-damped. Add virtual resistance (active damping) via capacitor-current feedback. The damping gain: R_d ~ 1/(3*Cf*omega_res)."
+    },
+    {
+      "heading": "Frequency drift",
+      "revision_trigger": "failed_revision",
+      "text": "If the output frequency drifts, the PLL or oscillator reference is unstable. For standalone operation, use a crystal oscillator. For grid-tied operation, verify the PLL bandwidth is adequate (5-10x below the current-loop bandwidth)."
+    }
+  ]
+}

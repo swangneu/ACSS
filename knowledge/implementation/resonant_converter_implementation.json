@@ -1,0 +1,23 @@
+{
+  "title": "Resonant Converter Implementation Patterns",
+  "topic": "implementation",
+  "power_stage_family": "dc_dc_resonant",
+  "tags": ["resonant", "llc", "frequency_control", "zvs", "dead_time"],
+  "source_type": "implementation_rule",
+  "source_refs": ["steigerwald_1988"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "Frequency control output",
+      "text": "The controller output is a switching frequency command, not a duty cycle. Map the PI output to a frequency register or timer period. Ensure the frequency is bounded: f_min <= f_command <= f_max. f_min prevents entering the ZCS region; f_max prevents excessive switching losses."
+    },
+    {
+      "heading": "Dead-time management",
+      "text": "Resonant converters require precise dead-time for ZVS. Dead time must be long enough for MOSFET output capacitance to charge/discharge but short enough to avoid body diode conduction. Typical: 50-200ns depending on MOSFET Coss."
+    },
+    {
+      "heading": "Startup procedure",
+      "text": "Start at maximum frequency (minimum gain) and ramp down to the target frequency. This limits inrush current through the resonant tank. Do not step the frequency command directly to the target — the tank current can exceed device ratings."
+    }
+  ]
+}

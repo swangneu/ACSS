@@ -1,0 +1,25 @@
+{
+  "title": "CLLC Resonant Converter Tuning",
+  "topic": "tuning",
+  "topology": "cllc_resonant",
+  "architecture": "llc_freq_control",
+  "power_stage_family": "dc_dc_resonant",
+  "tags": ["cllc", "resonant", "frequency_control", "bidirectional", "tuning"],
+  "source_type": "tuning_rule",
+  "source_refs": ["erickson_maksimovic_2001"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "PI gain starting points",
+      "text": "Same as LLC: kp ~ fr/Vout (Hz/V), ki ~ fr/(5*Vout) (Hz/(V*s)). CLLC is symmetric, so the gain curve is the same for forward and reverse power flow."
+    },
+    {
+      "heading": "Bidirectional tuning",
+      "text": "For bidirectional operation, the same PI gains should work in both directions because the CLLC tank is symmetric. Verify stability at both forward and reverse power flow. The bridge role switching adds latency — account for this in the bandwidth."
+    },
+    {
+      "heading": "Sample time",
+      "text": "Same as LLC: sample time <= 1/(10*fsw_max). For a 200 kHz CLLC, sample at <= 5 us."
+    }
+  ]
+}

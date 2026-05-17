@@ -1,0 +1,37 @@
+{
+  "title": "Forward Converter Revision Patterns",
+  "topic": "revision",
+  "topology": "forward",
+  "power_stage_family": "dc_dc_isolated",
+  "tags": ["forward", "revision", "reset_winding", "current_mode"],
+  "source_type": "revision_rule",
+  "source_refs": ["erickson_maksimovic_2001", "kazimierczuk_2008"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Overshoot from slow voltage loop",
+      "revision_trigger": "overshoot",
+      "text": "Forward converter overshoot: the voltage loop is too slow for the load step. Switch to peak-current-mode for faster response. If already on current-mode, reduce the voltage-loop kp and increase ki for faster recovery without overshoot."
+    },
+    {
+      "heading": "Slow settling from reset-winding limitation",
+      "revision_trigger": "slow_settling",
+      "text": "If the forward converter settles slowly, check the transformer reset. D must stay below 0.5 for volt-second balance with a reset winding. If the duty cycle is near 0.5, the reset time is minimal and the transformer may not fully reset — this causes rising magnetizing current and eventual saturation."
+    },
+    {
+      "heading": "Excess ripple from output inductor",
+      "revision_trigger": "excess_ripple",
+      "text": "Output ripple is set by the output inductor current ripple and capacitor ESR. The forward converter has the same output stage as a buck. Recheck L, C, and ESR before changing gains."
+    },
+    {
+      "heading": "Subharmonic oscillation",
+      "revision_trigger": "excess_ripple",
+      "text": "Period-doubling near fsw/2 is subharmonic instability from peak-current-mode without slope compensation. Add ramp >= V_out/(N*L_out*fsw). This is an architecture fix, not a tuning fix."
+    },
+    {
+      "heading": "Architecture limit",
+      "revision_trigger": "failed_revision",
+      "text": "If the forward converter cannot meet specs, consider: (1) two-switch forward for higher power and better reset, (2) push-pull or half-bridge for higher power, (3) flyback for simpler isolated design at lower power."
+    }
+  ]
+}

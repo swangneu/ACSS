@@ -1,0 +1,31 @@
+{
+  "title": "Architecture Escalation Decision Guide",
+  "topic": "revision",
+  "power_stage_family": "generic_power_converter",
+  "tags": ["escalation", "architecture", "topology_selection", "design_change"],
+  "source_type": "revision_rule",
+  "source_refs": ["erickson_maksimovic_2001", "basso_2012"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "When to escalate from PI to cascaded",
+      "text": "Escalate when: (a) single-loop PI fails overshoot specs at the required bandwidth, (b) the plant has significant current dynamics that a voltage loop cannot handle, (c) current limiting is required for protection. The cascaded structure lets the inner loop handle fast dynamics."
+    },
+    {
+      "heading": "When to escalate from voltage-mode to current-mode",
+      "text": "Escalate when: (a) the plant has a variable duty-cycle-to-output gain (boost, buck-boost), (b) the plant needs cycle-by-cycle current limiting, (c) the single-loop response is inconsistent across operating points. Current-mode control linearizes the plant."
+    },
+    {
+      "heading": "When to switch topology families",
+      "text": "Switch when: (a) the RHPZ or other fundamental plant limitation prevents meeting bandwidth specs, (b) the efficiency requirement cannot be met, (c) isolation is required but the current topology is non-isolated, (d) bidirectional power flow is required but the current topology is unidirectional."
+    },
+    {
+      "heading": "When to abandon current-mode control",
+      "text": "Rare, but consider when: (a) current sensing noise is too high and cannot be filtered without destabilizing the loop, (b) the plant is inherently first-order and current-mode adds complexity without benefit, (c) the application is very low power where sensing overhead is disproportionate."
+    },
+    {
+      "heading": "Topology selection decision tree",
+      "text": "Vout < Vin? -> Buck family. Vout > Vin? -> Boost family. Both possible? -> Buck-boost or isolated. Need isolation? -> Flyback (<75W), forward (75-200W), half/full bridge (>200W). Need bidirectional? -> DAB. Need AC output? -> Inverter family. Need PFC? -> PFC family. Need three-level? -> NPC or T-type."
+    }
+  ]
+}

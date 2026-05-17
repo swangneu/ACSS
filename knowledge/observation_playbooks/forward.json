@@ -1,0 +1,39 @@
+{
+  "topology": "forward",
+  "applies_to_families": ["dc_dc_isolated"],
+  "description": "Forward converter. Watch transformer reset, subharmonic oscillation, and leakage ringing.",
+  "key_signals": ["vout_v", "i_pri_a"],
+  "metrics": [
+    {"id": "tail_pp_to_mean_ratio", "extractor": "ratio", "args": {"numerator": "tail_pp_v", "denominator": "tail_abs_mean_v"}},
+    {"id": "first_peak_to_tail_ratio", "extractor": "first_peak_to_tail_ratio"},
+    {"id": "dominant_osc_hz", "extractor": "dominant_osc_hz", "args": {"signal": "vout_v"}},
+    {"id": "zero_crossings_in_tail", "extractor": "zero_crossings_in_tail"}
+  ],
+  "pathologies": [
+    {
+      "id": "subharmonic_oscillation",
+      "when": {"all": [
+        {"metric": "dominant_osc_hz", "op": ">", "value": 0},
+        {"metric": "dominant_osc_hz", "op": "<", "value": "fsw_hz * 0.6"},
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.05}
+      ]},
+      "implies": "architecture_or_tuning",
+      "explanation": "Oscillation below fsw — subharmonic instability from peak-current-mode without slope compensation."
+    },
+    {
+      "id": "transformer_saturation",
+      "when": {"all": [
+        {"metric": "first_peak_to_tail_ratio", "op": ">", "value": 2.0},
+        {"metric": "zero_crossings_in_tail", "op": ">=", "value": 1}
+      ]},
+      "implies": "architecture",
+      "explanation": "Rising primary current with output collapse — transformer saturation from incomplete reset. D must stay below 0.5."
+    },
+    {
+      "id": "no_response",
+      "when": {"metric": "tail_abs_mean_v", "op": "<", "value": "abs_target * 0.1"},
+      "implies": "implementation",
+      "explanation": "Output dead — check transformer polarity, gate drive, and reset winding connection."
+    }
+  ]
+}

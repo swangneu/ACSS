@@ -1,0 +1,33 @@
+{
+  "title": "LLC Resonant Converter Frequency Control Tuning",
+  "topic": "tuning",
+  "topology": "llc_resonant",
+  "architecture": "llc_freq_control",
+  "power_stage_family": "dc_dc_resonant",
+  "tags": ["llc", "resonant", "frequency_control", "tuning"],
+  "source_type": "tuning_rule",
+  "source_refs": ["steigerwald_1988"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "PI gain starting points",
+      "text": "kp is in Hz/V. Start with kp ~ fr/Vout. ki is in Hz/(V*s). Start with ki ~ fr/(5*Vout). These are starting points; actual values depend heavily on tank parameters and operating point."
+    },
+    {
+      "heading": "Gain direction",
+      "text": "Increasing kp speeds up the response but can cause frequency overshoot (output oscillates around the resonant point). If the frequency command oscillates, reduce kp first. If the response is sluggish but stable, increase kp then ki."
+    },
+    {
+      "heading": "Light load vs heavy load",
+      "text": "At light load, the plant gain (Vout/Hz) is very small, so the PI needs high gains. At heavy load, the plant gain is large, so the PI needs lower gains. If a single gain set cannot work across the load range, consider gain scheduling by load current."
+    },
+    {
+      "heading": "Sample time",
+      "text": "The switching frequency for LLC is typically 50-500 kHz. The control sample time should be at least 10x faster than the maximum switching frequency. For a 200 kHz LLC, sample at <= 5 us."
+    },
+    {
+      "heading": "Soft start",
+      "text": "Start with a high switching frequency (low gain) and ramp down to the target frequency. This prevents excessive inrush current through the resonant tank at startup. Do not step the frequency command directly to the target."
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "title": "LCC Resonant Converter Revision Patterns",
+  "topic": "revision",
+  "topology": "lcc_resonant",
+  "power_stage_family": "dc_dc_resonant",
+  "tags": ["lcc", "resonant", "revision", "gain_curve"],
+  "source_type": "revision_rule",
+  "source_refs": ["steigerwald_1988"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Gain curve steepness near resonance",
+      "revision_trigger": "overshoot",
+      "text": "If the LCC oscillates or overshoots near the resonant frequency, the gain curve is very steep in this region — small frequency changes cause large output changes. Move the operating point to the inductive side (f > f_r) where the gain curve is flatter and more controllable."
+    },
+    {
+      "heading": "Flat gain at light load",
+      "revision_trigger": "slow_settling",
+      "text": "At light load, the LCC gain curve becomes very flat — large frequency changes produce minimal output change. The controller output saturates trying to regulate. Consider burst mode at light load or a wider frequency range."
+    },
+    {
+      "heading": "Tank redesign trigger",
+      "revision_trigger": "failed_revision",
+      "text": "If the LCC cannot regulate across the required load range, the tank component values (L_r, C_r, C_p) may need redesign. The parallel capacitor C_p sets the gain at light load; the series components set the resonant frequency. Adjust L_r/C_r ratio to shift the gain curve."
+    },
+    {
+      "heading": "ZCS loss at high frequency",
+      "revision_trigger": "efficiency_shortfall",
+      "text": "If operating above resonance (inductive side), the LCC achieves ZVS. If operating below resonance (capacitive side), it achieves ZCS but may lose ZCS at light load. Verify the operating region matches the switching device type (MOSFETs prefer ZVS, IGBTs prefer ZCS)."
+    }
+  ]
+}

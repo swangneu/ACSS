@@ -298,22 +298,43 @@ Add `--human-review` to pause after each major step:
 
 ## Knowledge base
 
-ACSS uses a local metadata-first retrieval layer (no vector DB, no embeddings):
+ACSS uses a local metadata-first retrieval layer (no vector DB, no embeddings). The knowledge base covers all 23 supported topologies across 6 families (DC-DC non-isolated, DC-DC isolated, DC-DC resonant, AC-DC rectifier, DC-AC inverter).
 
 ```
 knowledge/
-├── controllers/    control-family definitions
-├── strategy/       architecture selection rules
-├── tuning/         gain-direction and loop-ordering rules
-├── revision/       failure-driven revision guidance
-├── constraints/    sensing and operating-region constraints
-├── implementation/ practical implementation patterns
-└── sources/        paper/book/app-note metadata
+├── strategy/              architecture selection rules (24 files)
+├── tuning/                gain-direction and loop-ordering rules (29 files)
+├── revision/              failure-driven revision guidance (27 files)
+│   └── debugging_methodology.json, architecture_escalation_guide.json
+├── observation_playbooks/ waveform pathology detection rules (25 files)
+├── implementation/        practical implementation patterns (5 files)
+├── sources/               paper/book/app-note metadata (11 files)
+└── index.json             auto-built retrieval index
 ```
 
-Retrieval metadata: `topic`, `topology`, `architecture`, `power_stage_family`, `control_objective`, `operating_mode`, `plant_features`, `revision_trigger`, `tags`.
+**Coverage:** 23/23 topologies fully covered (strategy + tuning + revision + observation playbook for each).
 
-To add knowledge: write compact JSON entries under the appropriate topic folder. Do not put raw PDFs in the retriever — distill claims into JSON and store PDFs locally under `papers/` (git-ignored).
+| Family | Topologies |
+|---|---|
+| DC-DC non-isolated | buck, boost, buck_boost, sepic, cuk |
+| DC-DC isolated | flyback, forward, push_pull, half_bridge, full_bridge, psfb, dab |
+| DC-DC resonant | llc_resonant, lcc_resonant, src, cllc_resonant |
+| AC-DC rectifier | pfc, pfc_totem_pole, vienna |
+| DC-AC inverter | inverter_1ph, inverter_3ph, inverter_3ph_npc, inverter_3ph_t_type |
+
+**Retrieval metadata:** `topic`, `topology`, `architecture`, `power_stage_family`, `control_objective`, `operating_mode`, `plant_features`, `revision_trigger`, `tags`.
+
+**Agents that query knowledge:**
+- `ControlStrategyAgent` — retrieves strategy entries for architecture selection
+- `ControlAgent` — retrieves tuning entries for gain synthesis
+- `TuningAgent` — retrieves tuning entries during post-failure tuning
+- `RevisingAgent` — retrieves revision entries during post-failure revision
+
+**Debugging methodology:** The revision knowledge includes a systematic debugging order (Implementation → Plant model → Architecture → Tuning) and an architecture escalation guide (PI → cascaded, voltage-mode → current-mode, topology family switch decision criteria).
+
+**Authoritative sources:** Erickson & Maksimovic (2020), Kazimierczuk (2008), Basso (2012), Teodorescu et al. (2011), Yazdani & Iravani (2010), Steigerwald (1988), De Doncker (1991), Kolar (ETH Zurich), TI Application Notes.
+
+To add knowledge: write compact JSON entries under the appropriate topic folder. Each section should be 150-300 characters (high-signal, specific numbers). Rebuild the index with `python -c "from src.rag.indexer import build_index; from pathlib import Path; build_index(Path('knowledge'), Path('knowledge/index.json'))"` after changes. Run `python -m src.rag.validator` to check for warnings. Do not put raw PDFs in the retriever — distill claims into JSON and store PDFs locally under `papers/` (git-ignored).
 
 ---
 

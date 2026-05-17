@@ -1,0 +1,25 @@
+{
+  "title": "LCC Resonant Converter Tuning",
+  "topic": "tuning",
+  "topology": "lcc_resonant",
+  "architecture": "llc_freq_control",
+  "power_stage_family": "dc_dc_resonant",
+  "tags": ["lcc", "resonant", "frequency_control", "tuning"],
+  "source_type": "tuning_rule",
+  "source_refs": ["steigerwald_1988"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "PI gain starting points",
+      "text": "Same as LLC: kp ~ fr/Vout (Hz/V), ki ~ fr/(5*Vout) (Hz/(V*s)). The LCC gain curve depends on the Cp/Cr ratio. Higher Cp makes the gain curve flatter, requiring higher gains."
+    },
+    {
+      "heading": "Gain direction",
+      "text": "Same as LLC: increase kp for faster response, reduce kp if frequency oscillates. LCC has a wider control range than SRC but narrower than LLC for the same tank parameters."
+    },
+    {
+      "heading": "Sample time",
+      "text": "Same as LLC: sample time <= 1/(10*fsw_max). For a 200 kHz LCC, sample at <= 5 us."
+    }
+  ]
+}

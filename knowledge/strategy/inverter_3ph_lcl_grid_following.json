@@ -7,19 +7,30 @@
   "control_objective": "grid_following",
   "operating_mode": "grid_connected",
   "plant_features": ["lcl_filter", "grid_synchronization"],
-  "tags": ["grid_connected", "lcl", "current_loop"],
+  "tags": ["grid_connected", "lcl", "current_loop", "active_damping", "pll"],
   "source_type": "controller_pattern",
   "source_refs": ["teodorescu_grid_converters_2011"],
   "confidence": "high",
   "sections": [
     {
       "heading": "Default approach",
-      "text": "For a three-phase grid-tied inverter with an LCL filter, use dq current regulation with PLL-based synchronization and treat resonance damping as a first-class design requirement."
+      "text": "For a three-phase grid-tied inverter with an LCL filter, use dq current regulation with PLL-based synchronization and treat resonance damping as a first-class design requirement. The LCL resonance must be damped before pushing current-loop bandwidth."
     },
     {
-      "heading": "Constraint",
-      "topic": "constraints",
-      "text": "Do not assume the LCL resonance is benign. Active damping or equivalent passive damping should be represented in the controller design context before increasing current-loop bandwidth."
+      "heading": "LCL filter design",
+      "text": "L1 (inverter side) sized for current ripple 10-25% of rated current at fsw. Cf sized so LCL resonance f_res = 1/(2*pi)*sqrt((L1+L2)/(L1*L2*Cf)) falls between 10*f_grid and fsw/2. L2 (grid side) typically 1/3 to 1/5 of L1."
+    },
+    {
+      "heading": "Active damping",
+      "text": "Capacitor-current feedback with gain R_d acts as virtual resistor in series with Cf. Starting point: R_d ~ 1/(3*Cf*omega_res). Without active damping, the LCL resonance appears as a sharp peak in the loop gain that destabilizes the current loop."
+    },
+    {
+      "heading": "PLL design",
+      "text": "PLL bandwidth should be 5-10x below the current-loop bandwidth. For current-loop crossover of fsw/10, set PLL crossover to fsw/100 or lower. In weak grid (SCR < 3), reduce PLL bandwidth further or switch to grid-forming control (VSG/VOC/droop)."
+    },
+    {
+      "heading": "dq decoupling",
+      "text": "The d-axis and q-axis plants are coupled through omega*L cross-terms. Without feedforward decoupling (Vd_ff = -omega*L*Iq, Vq_ff = omega*L*Id), the loops fight each other and effective bandwidth drops by 50% or more."
     }
   ]
 }

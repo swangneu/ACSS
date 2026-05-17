@@ -1,0 +1,29 @@
+{
+  "source_id": "yazdani_iravani_2010",
+  "title": "Voltage-Sourced Converters in Power Systems",
+  "authors": ["Amirnaser Yazdani", "Reza Iravani"],
+  "year": 2010,
+  "publisher": "Wiley-IEEE Press",
+  "type": "textbook",
+  "isbn": "978-0470521564",
+  "coverage": ["VSC modeling", "dq-frame control", "grid-connected converters", "NPC", "multilevel"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "VSC modeling in dq frame",
+      "claim_id": "vsc_dq_model",
+      "claim_type": "design_rule",
+      "text": "Voltage-sourced converters are most naturally modeled and controlled in the synchronous dq reference frame, which transforms AC quantities to DC for PI control. The dq decoupling terms (omega*L cross-coupling) are essential for independent axis control.",
+      "source_refs": ["yazdani_iravani_2010"],
+      "evidence_strength": "high"
+    },
+    {
+      "heading": "Multilevel converter topologies",
+      "claim_id": "multilevel_topologies",
+      "claim_type": "design_rule",
+      "text": "NPC and T-type three-level converters reduce THD and switch voltage stress compared to two-level. NPC is preferred above 600V DC bus; T-type is more efficient below 600V due to lower conduction loss in the neutral-point switches.",
+      "source_refs": ["yazdani_iravani_2010"],
+      "evidence_strength": "high"
+    }
+  ]
+}

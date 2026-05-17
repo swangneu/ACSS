@@ -1,0 +1,37 @@
+{
+  "title": "Flyback Converter Revision Patterns",
+  "topic": "revision",
+  "topology": "flyback",
+  "power_stage_family": "dc_dc_isolated",
+  "tags": ["flyback", "revision", "slope_compensation", "ccm_dcm"],
+  "source_type": "revision_rule",
+  "source_refs": ["erickson_maksimovic_2001", "ti_current_mode_control_handbook"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "Overshoot from subharmonic instability",
+      "revision_trigger": "overshoot",
+      "text": "Flyback overshoot often traces to insufficient slope compensation causing subharmonic instability (misread as tuning overshoot) or to the RHPZ limiting bandwidth in CCM. Verify slope compensation first, then check the RHPZ frequency at the operating point."
+    },
+    {
+      "heading": "Slow settling in DCM vs CCM",
+      "revision_trigger": "slow_settling",
+      "text": "Flyback slow settling in DCM is usually acceptable (the plant is inherently slower in DCM). In CCM, check if the RHPZ is capping bandwidth below requirements. If so, this is a topology limitation — consider forward or half-bridge for higher power."
+    },
+    {
+      "heading": "Output ripple components",
+      "revision_trigger": "excess_ripple",
+      "text": "Flyback output ripple has two components: (1) capacitor ESR ripple proportional to the output current, and (2) ripple from the discontinuous secondary current waveform. Verify C and ESR sizing before changing gains. The discontinuous current makes the ripple higher than a buck."
+    },
+    {
+      "heading": "Efficiency from leakage and magnetizing current",
+      "revision_trigger": "efficiency_shortfall",
+      "text": "Flyback efficiency is dominated by the leakage inductance energy (requires snubber/clamp) and the transformer magnetizing current (circulating energy). The controller cannot improve these — they are plant design issues. Consider synchronous rectification."
+    },
+    {
+      "heading": "Topology limitation",
+      "revision_trigger": "failed_revision",
+      "text": "If flyback fails across iterations, consider: (1) switching from PSR to SSR feedback for better regulation, (2) switching from flyback to forward (for >50W), (3) adding synchronous rectification for efficiency."
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "title": "Boost PFC Average Current Mode Tuning",
+  "topic": "tuning",
+  "topology": "pfc",
+  "architecture": "average_current_mode",
+  "tags": ["pfc", "boost", "average_current_mode", "power_factor"],
+  "source_type": "tuning_rule",
+  "source_refs": ["ti_current_mode_control_handbook"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Current loop",
+      "text": "Average-current-mode inner loop shapes the input current to follow the rectified line voltage reference. Crossover: f_ci ~ fsw/10. The current compensator is typically Type II (PI with lead) to cancel the boost inductor pole. The current reference is the multiplier output: V_err * |V_line|."
+    },
+    {
+      "heading": "Voltage loop",
+      "text": "The voltage loop must be very slow to avoid distorting the current reference. Crossover: f_cv ~ 10-20Hz (well below 2*f_line). PI compensator with very low kp and ki. The 2*f_line ripple on the DC bus must not appear in the current reference — the low bandwidth naturally attenuates it."
+    },
+    {
+      "heading": "Revision note",
+      "text": "If input current THD is high, check: (1) voltage-loop bandwidth is low enough, (2) feedforward of line voltage is accurate, (3) current-loop gain is sufficient at the line frequency. The current loop must track a 50/60Hz sinusoidal reference — it needs adequate bandwidth at the line frequency."
+    }
+  ]
+}

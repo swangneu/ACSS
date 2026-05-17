@@ -1,0 +1,57 @@
+{
+  "topology": "boost",
+  "applies_to_families": ["dc_dc_nonisolated"],
+  "description": "Boost converter. Watch RHPZ-limited dynamics, duty saturation, and current-loop stability.",
+  "key_signals": ["vout_v", "iL_a"],
+  "metrics": [
+    {"id": "tail_pp_to_mean_ratio", "extractor": "ratio", "args": {"numerator": "tail_pp_v", "denominator": "tail_abs_mean_v"}},
+    {"id": "first_peak_to_tail_ratio", "extractor": "first_peak_to_tail_ratio"},
+    {"id": "dominant_osc_hz", "extractor": "dominant_osc_hz", "args": {"signal": "vout_v"}},
+    {"id": "zero_crossings_in_tail", "extractor": "zero_crossings_in_tail"}
+  ],
+  "pathologies": [
+    {
+      "id": "rhpz_undershoot",
+      "when": {"all": [
+        {"metric": "first_peak_to_tail_ratio", "op": ">", "value": 1.3},
+        {"metric": "zero_crossings_in_tail", "op": ">=", "value": 1}
+      ]},
+      "implies": "tuning_or_architecture",
+      "explanation": "Initial dip before overshoot (non-minimum-phase undershoot) is characteristic of RHPZ-limited boost. Voltage-loop bandwidth exceeds RHPZ frequency."
+    },
+    {
+      "id": "duty_saturation",
+      "when": {"all": [
+        {"metric": "tail_abs_mean_v", "op": "<", "value": "abs_target * 0.8"},
+        {"metric": "steady_state_abs_error_pct", "op": ">", "value": 10}
+      ]},
+      "implies": "architecture",
+      "explanation": "Output cannot reach target — likely duty-cycle saturation. Verify the operating point is achievable (Vout > Vin for boost)."
+    },
+    {
+      "id": "subharmonic_oscillation",
+      "when": {"all": [
+        {"metric": "dominant_osc_hz", "op": ">", "value": 0},
+        {"metric": "dominant_osc_hz", "op": "<", "value": "fsw_hz * 0.6"},
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.05}
+      ]},
+      "implies": "architecture_or_tuning",
+      "explanation": "Oscillation below fsw — subharmonic instability from peak-current-mode without slope compensation."
+    },
+    {
+      "id": "limit_cycle",
+      "when": {"all": [
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.2},
+        {"metric": "zero_crossings_in_tail", "op": ">=", "value": 6}
+      ]},
+      "implies": "tuning_or_architecture",
+      "explanation": "Sustained oscillation — saturation or integrator windup."
+    },
+    {
+      "id": "no_response",
+      "when": {"metric": "tail_abs_mean_v", "op": "<", "value": "abs_target * 0.1"},
+      "implies": "implementation",
+      "explanation": "Output never approaches target — sign/scale/wiring error."
+    }
+  ]
+}

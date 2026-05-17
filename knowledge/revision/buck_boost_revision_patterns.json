@@ -1,0 +1,37 @@
+{
+  "title": "Buck-Boost Revision Patterns",
+  "topic": "revision",
+  "topology": "buck_boost",
+  "power_stage_family": "dc_dc_nonisolated",
+  "tags": ["buck_boost", "revision", "rhpz", "wide_range"],
+  "source_type": "revision_rule",
+  "source_refs": ["erickson_maksimovic_2001"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Overshoot from RHPZ",
+      "revision_trigger": "overshoot",
+      "text": "In boost-mode operation (V_out > V_in), the buck-boost has an RHPZ identical to a boost converter. If overshoot occurs in this region, reduce voltage-loop crossover below f_RHPZ/4. In buck-mode (V_out < V_in), there is no RHPZ — overshoot is a pure gain/tuning issue."
+    },
+    {
+      "heading": "Slow settling from operating-point shift",
+      "revision_trigger": "slow_settling",
+      "text": "The buck-boost plant dynamics change significantly between buck and boost modes. If settling is slow near the buck-boost boundary (V_out ~ V_in), the controller must handle the transition. Cascaded current-mode with gain scheduling is the robust solution."
+    },
+    {
+      "heading": "Excess ripple from duty-cycle range",
+      "revision_trigger": "excess_ripple",
+      "text": "At extreme duty cycles (very high or very low D), the inductor current ripple increases. Verify the inductor sizing is adequate for the worst-case operating point. Controller gain changes will not fix ripple from undersized passives."
+    },
+    {
+      "heading": "Efficiency from conduction losses",
+      "revision_trigger": "efficiency_shortfall",
+      "text": "Buck-boost efficiency is inherently lower than buck or boost alone because the current path always includes both the switch and the diode (or synchronous rectifier). The controller cannot improve this — consider a different topology if efficiency is critical."
+    },
+    {
+      "heading": "Architecture limit",
+      "revision_trigger": "failed_revision",
+      "text": "If the buck-boost fails transient specs across the full operating range, the plant dynamics are too variable for a fixed-gain controller. Consider: (1) gain scheduling based on duty cycle, (2) cascaded current-mode, or (3) a different topology if the conversion ratio is always step-down or always step-up."
+    }
+  ]
+}

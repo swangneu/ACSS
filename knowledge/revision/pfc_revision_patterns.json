@@ -1,0 +1,37 @@
+{
+  "title": "PFC Converter Revision Patterns",
+  "topic": "revision",
+  "topology": "pfc",
+  "power_stage_family": "ac_dc_rectifier",
+  "tags": ["pfc", "revision", "thd", "power_factor"],
+  "source_type": "revision_rule",
+  "source_refs": ["erickson_maksimovic_2001"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "Voltage overshoot from voltage-loop bandwidth",
+      "revision_trigger": "overshoot",
+      "text": "PFC overshoot on the bulk capacitor is a voltage-loop issue. The voltage-loop bandwidth must stay below 2*f_line (100 Hz for 50 Hz, 120 Hz for 60 Hz). If overshoot persists, add a notch filter at 2*f_line or reduce the voltage-loop bandwidth."
+    },
+    {
+      "heading": "Slow settling by design",
+      "revision_trigger": "slow_settling",
+      "text": "PFC settling is dominated by the voltage-loop bandwidth, which is intentionally low (10-20 Hz) to avoid distorting the current reference. This is by design. If faster settling is required, consider adding a fast inner voltage loop or accepting the slow response."
+    },
+    {
+      "heading": "2*f_line ripple is inherent",
+      "revision_trigger": "excess_ripple",
+      "text": "PFC output ripple at 2*f_line is inherent to single-phase PFC and cannot be eliminated by the controller. The ripple magnitude is: V_ripple = Pout/(2*pi*2*f_line*C_bulk). Reduce by increasing C_bulk. Controller gains cannot fix this."
+    },
+    {
+      "heading": "Efficiency from plant losses",
+      "revision_trigger": "efficiency_shortfall",
+      "text": "PFC efficiency is dominated by the boost diode forward voltage and MOSFET switching/conduction losses. Consider totem-pole PFC with GaN/SiC for higher efficiency. The controller has limited ability to improve efficiency."
+    },
+    {
+      "heading": "THD from current-loop issues",
+      "revision_trigger": "failed_revision",
+      "text": "If PFC fails across iterations, verify the current reference is tracking the rectified sine waveform. If THD is high, increase current-loop bandwidth. If PF is low despite low THD, check the current-loop phase shift at the line frequency."
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "topology": "inverter_1ph",
+  "applies_to_families": ["dc_ac_inverter"],
+  "description": "Single-phase inverter. Watch THD, voltage overshoot, frequency drift, and no AC output.",
+  "key_signals": ["va_v", "ia_a"],
+  "metrics": [
+    {"id": "tail_pp_to_mean_ratio", "extractor": "ratio", "args": {"numerator": "tail_pp_v", "denominator": "tail_abs_mean_v"}},
+    {"id": "first_peak_to_tail_ratio", "extractor": "first_peak_to_tail_ratio"},
+    {"id": "dominant_osc_hz", "extractor": "dominant_osc_hz", "args": {"signal": "va_v"}},
+    {"id": "zero_crossings_in_tail", "extractor": "zero_crossings_in_tail"}
+  ],
+  "pathologies": [
+    {
+      "id": "thd_excessive",
+      "when": {"all": [
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.08},
+        {"metric": "zero_crossings_in_tail", "op": ">=", "value": 6}
+      ]},
+      "implies": "tuning",
+      "explanation": "Output voltage has significant harmonic distortion. Increase PR controller bandwidth or add harmonic compensators at 3rd, 5th, 7th."
+    },
+    {
+      "id": "voltage_overshoot",
+      "when": {"all": [
+        {"metric": "first_peak_to_tail_ratio", "op": ">", "value": 1.3},
+        {"metric": "zero_crossings_in_tail", "op": ">=", "value": 1}
+      ]},
+      "implies": "tuning",
+      "explanation": "Output overshoots the target amplitude. Reduce kp or increase the damping in the PR controller. Check if the resonant pole is at the exact fundamental frequency."
+    },
+    {
+      "id": "frequency_drift",
+      "when": {"all": [
+        {"metric": "dominant_osc_hz", "op": ">", "value": 0},
+        {"metric": "dominant_osc_hz", "op": "<", "value": "target_freq_hz * 0.9"}
+      ]},
+      "implies": "implementation",
+      "explanation": "Output frequency is below target — PLL or oscillator not locked. Check the frequency reference generation."
+    },
+    {
+      "id": "no_ac_output",
+      "when": {"metric": "tail_abs_mean_v", "op": "<", "value": "abs_target * 0.1"},
+      "implies": "implementation",
+      "explanation": "No AC output detected — implementation error (controller output not reaching the plant, or DC bias in the output)."
+    }
+  ]
+}

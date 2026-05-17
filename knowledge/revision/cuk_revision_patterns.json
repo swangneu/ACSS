@@ -1,0 +1,37 @@
+{
+  "title": "Cuk Converter Revision Patterns",
+  "topic": "revision",
+  "topology": "cuk",
+  "power_stage_family": "dc_dc_nonisolated",
+  "tags": ["cuk", "revision", "rhpz", "inverted_output"],
+  "source_type": "revision_rule",
+  "source_refs": ["erickson_maksimovic_2001"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Overshoot from RHPZ",
+      "revision_trigger": "overshoot",
+      "text": "Cuk overshoot in CCM is the same mechanism as boost — the RHPZ limits voltage-loop bandwidth. Reduce kp to bring crossover below f_RHPZ/4. If the output is inverted, verify the feedback polarity is correct (negative feedback, not positive)."
+    },
+    {
+      "heading": "Slow settling from RHPZ limit",
+      "revision_trigger": "slow_settling",
+      "text": "If the Cuk settles slowly and gains are conservative, check the RHPZ frequency: f_RHPZ = (1-D)^2*R/(2*pi*L2). At high D and light load, this can be very low. Consider DCM operation or a different topology."
+    },
+    {
+      "heading": "Excess ripple from coupling capacitor",
+      "revision_trigger": "excess_ripple",
+      "text": "The coupling capacitor C1 carries the full input+output ripple current. Its ESR directly affects output ripple. Increase C1 or use a lower-ESR type (film or ceramic). Controller gain changes will not fix ripple dominated by passive component sizing."
+    },
+    {
+      "heading": "Subharmonic oscillation",
+      "revision_trigger": "excess_ripple",
+      "text": "If the Cuk shows period-doubling near fsw/2, this is subharmonic instability from peak-current-mode control. Add slope compensation with ramp >= (V_out)*D/(L2*fsw). This is an architecture fix, not a tuning fix."
+    },
+    {
+      "heading": "Architecture limit",
+      "revision_trigger": "failed_revision",
+      "text": "If the Cuk fails across iterations due to RHPZ limitation or the inverted output creates control complexity, consider SEPIC (non-inverted output, same RHPZ behavior) or flyback (if isolation is needed)."
+    }
+  ]
+}

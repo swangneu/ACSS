@@ -1,0 +1,36 @@
+{
+  "title": "Three-Level T-Type Inverter Strategy",
+  "topic": "strategy",
+  "topology": "inverter_3ph_t_type",
+  "architecture": "dq",
+  "power_stage_family": "dc_ac_inverter",
+  "control_objective": "grid_following",
+  "operating_mode": "grid_connected",
+  "plant_features": ["neutral_point_balance", "three_level", "bidirectional_switch"],
+  "tags": ["t_type", "three_level", "dq", "grid_tied", "neutral_point"],
+  "source_type": "controller_pattern",
+  "source_refs": ["teodorescu_grid_converters_2011"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Default structure",
+      "text": "T-type is a three-level inverter with two main switches per leg (connected to DC+ and DC-) plus a bidirectional switch to the neutral point. It has lower conduction losses than NPC at lower voltage ratings. Same dq-frame control structure as NPC."
+    },
+    {
+      "heading": "Neutral-point balancing",
+      "text": "Same balancing algorithm as NPC: adjust dwell time at the zero voltage level to equalize split-capacitor voltages. The bidirectional neutral-point switch carries the balancing current — ensure its current rating is sufficient. Balancing loop bandwidth ~1/10 of current loop."
+    },
+    {
+      "heading": "Design formulas",
+      "text": "Output voltage levels: +V_dc/2, 0, -V_dc/2 (same as NPC). The main switches (S1, S4) see full DC bus voltage. The bidirectional switches (S2, S3) see half the DC bus voltage but carry the full output current during zero-level operation. Current-loop crossover: fsw/10."
+    },
+    {
+      "heading": "Constraint",
+      "text": "T-type has higher efficiency than NPC below ~600V DC bus because the neutral-point switches have lower voltage rating and thus lower conduction loss. Above ~600V, NPC is preferred because the neutral-point switches must be rated for V_dc/2. Dead-time between main and bidirectional switches is critical."
+    },
+    {
+      "heading": "Escalation trigger",
+      "text": "Same as NPC: if neutral-point balancing oscillates, reduce gain or increase capacitor size. If efficiency is below spec, verify the bidirectional switch selection (SiC MOSFETs can improve efficiency at higher voltage). For voltage >1kV, NPC is structurally more appropriate."
+    }
+  ]
+}

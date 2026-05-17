@@ -1,0 +1,32 @@
+{
+  "title": "Push-Pull Converter Strategy",
+  "topic": "strategy",
+  "topology": "push_pull",
+  "architecture": "cascaded",
+  "power_stage_family": "dc_dc_isolated",
+  "control_objective": "voltage_regulation",
+  "operating_mode": "standalone",
+  "plant_features": ["center_tapped_transformer", "flux_imbalance", "leakage_spike"],
+  "tags": ["push_pull", "current_mode", "flux_balance", "isolation"],
+  "source_type": "controller_pattern",
+  "source_refs": ["erickson_maksimovic_2001", "kazimierczuk_2008"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Default structure",
+      "text": "Push-pull uses two switches driving a center-tapped transformer. Duty cycle must stay below 0.5 to prevent simultaneous conduction. Peak-current-mode control is strongly preferred over voltage-mode to handle flux imbalance and provide automatic current sharing."
+    },
+    {
+      "heading": "Design formulas",
+      "text": "V_out = D*V_in*N_sec/N_pri (per half-cycle, D<0.5). Transformer turns ratio N = N_sec/N_pri sets the conversion ratio. Effective switching frequency at the output is 2*fsw. Reset volt-second = D*V_in/fsw per half-cycle."
+    },
+    {
+      "heading": "Constraint",
+      "text": "Flux imbalance: even small duty-cycle asymmetry causes DC bias in the transformer core. Current-mode control with per-switch current sensing provides inherent flux balancing. Voltage-mode requires external flux-balance circuits. Add leading-edge blanking (100-300ns) to blank the MOSFET turn-on spike."
+    },
+    {
+      "heading": "Escalation trigger",
+      "text": "If the push-pull shows flux imbalance (rising magnetizing current, core saturation), verify current sensing is per-switch (not averaged). If leakage inductance causes excessive voltage spikes, add snubbers or consider an active clamp. For higher power (>500W), consider half-bridge or full-bridge."
+    }
+  ]
+}

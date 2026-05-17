@@ -1,0 +1,38 @@
+{
+  "topology": "vienna",
+  "applies_to_families": ["ac_dc_rectifier"],
+  "description": "Vienna rectifier. Watch neutral-point balance, current distortion, and 100/120Hz ripple.",
+  "key_signals": ["vout_v", "ia_a", "ib_a", "ic_a"],
+  "metrics": [
+    {"id": "tail_pp_to_mean_ratio", "extractor": "ratio", "args": {"numerator": "tail_pp_v", "denominator": "tail_abs_mean_v"}},
+    {"id": "dominant_osc_hz", "extractor": "dominant_osc_hz", "args": {"signal": "vout_v"}},
+    {"id": "zero_crossings_in_tail", "extractor": "zero_crossings_in_tail"}
+  ],
+  "pathologies": [
+    {
+      "id": "neutral_point_oscillation",
+      "when": {"all": [
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.1},
+        {"metric": "zero_crossings_in_tail", "op": ">=", "value": 2}
+      ]},
+      "implies": "tuning_or_architecture",
+      "explanation": "Split DC-bus capacitor voltage oscillation — neutral-point balancing loop is unstable or capacitance is too small."
+    },
+    {
+      "id": "line_frequency_ripple",
+      "when": {"all": [
+        {"metric": "dominant_osc_hz", "op": ">", "value": 80},
+        {"metric": "dominant_osc_hz", "op": "<", "value": 140},
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.05}
+      ]},
+      "implies": "tuning_or_architecture",
+      "explanation": "100/120Hz ripple — inherent power pulsation. Voltage-loop bandwidth must be below 2*f_line."
+    },
+    {
+      "id": "no_response",
+      "when": {"metric": "tail_abs_mean_v", "op": "<", "value": "abs_target * 0.1"},
+      "implies": "implementation",
+      "explanation": "Output dead — check AC input, gate drive, and current sensing."
+    }
+  ]
+}

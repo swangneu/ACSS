@@ -1,0 +1,28 @@
+{
+  "title": "Series Resonant Converter Strategy",
+  "topic": "strategy",
+  "topology": "src",
+  "architecture": "llc_freq_control",
+  "power_stage_family": "dc_dc_resonant",
+  "control_objective": "voltage_regulation",
+  "operating_mode": "standalone",
+  "plant_features": ["soft_switching", "resonant_tank"],
+  "tags": ["src", "resonant", "frequency_control", "zvs"],
+  "source_type": "controller_pattern",
+  "source_refs": ["steigerwald_1988"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "When to use",
+      "text": "Use SRC for applications with relatively constant load. SRC has no parallel inductor — gain is always <= 1 and strongly load-dependent. Control range is narrower than LLC. Best when the load is predictable and the conversion ratio is modest."
+    },
+    {
+      "heading": "Key difference from LLC",
+      "text": "SRC gain decreases monotonically with frequency above resonance. At light load, the gain curve is very flat and the converter loses regulation ability. LLC is preferred when wide load range regulation is needed."
+    },
+    {
+      "heading": "Controller structure",
+      "text": "Same as LLC: PI controller with kp in Hz/V and ki in Hz/(V*s). The output is a switching frequency command. Operate above resonance for ZVS. Frequency range is narrower than LLC — typically 0.9*fr to 1.3*fr."
+    }
+  ]
+}

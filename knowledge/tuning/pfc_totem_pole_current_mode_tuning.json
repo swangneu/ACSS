@@ -1,0 +1,29 @@
+{
+  "title": "Totem-Pole PFC Current Mode Tuning",
+  "topic": "tuning",
+  "topology": "pfc_totem_pole",
+  "architecture": "average_current_mode",
+  "power_stage_family": "ac_dc_rectifier",
+  "tags": ["pfc", "totem_pole", "current_mode", "tuning"],
+  "source_type": "tuning_rule",
+  "source_refs": ["erickson_maksimovic_2001"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "Bandwidth ordering",
+      "text": "Inner current loop crossover: f_ci ~ fsw/10 to fsw/5. Outer voltage loop crossover: f_cv = 10-20 Hz (must stay below 2*f_line). The voltage loop must be slow enough to not distort the sinusoidal current reference."
+    },
+    {
+      "heading": "Current loop tuning",
+      "text": "The current loop tracks a sinusoidal reference. The plant is a boost inductor with variable duty cycle. Set kp for the desired crossover frequency: kp ~ 2*pi*f_ci*L_boost/Vout. Add ki for zero steady-state error at the line frequency."
+    },
+    {
+      "heading": "Voltage loop tuning",
+      "text": "The voltage loop regulates the bulk capacitor. kp ~ 2*pi*f_cv*C_bulk/Vout. ki ~ kp*f_cv/5. The voltage loop output is the current amplitude — it multiplies with the rectified line voltage shape to generate the current reference."
+    },
+    {
+      "heading": "THD considerations",
+      "text": "If THD is high, increase current-loop bandwidth. If the current loop is too slow, the current waveform distorts at the zero crossings of the line voltage. The current-loop phase margin at 2*f_line determines the power factor."
+    }
+  ]
+}

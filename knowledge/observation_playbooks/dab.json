@@ -1,0 +1,47 @@
+{
+  "topology": "dab",
+  "applies_to_families": ["dc_dc_isolated"],
+  "description": "DAB converter. Watch ZVS loss, phase-shift hunting, and circulating current.",
+  "key_signals": ["vout_v", "iL_a"],
+  "metrics": [
+    {"id": "tail_pp_to_mean_ratio", "extractor": "ratio", "args": {"numerator": "tail_pp_v", "denominator": "tail_abs_mean_v"}},
+    {"id": "first_peak_to_tail_ratio", "extractor": "first_peak_to_tail_ratio"},
+    {"id": "dominant_osc_hz", "extractor": "dominant_osc_hz", "args": {"signal": "vout_v"}},
+    {"id": "zero_crossings_in_tail", "extractor": "zero_crossings_in_tail"}
+  ],
+  "pathologies": [
+    {
+      "id": "zvs_loss_oscillation",
+      "when": {"all": [
+        {"metric": "dominant_osc_hz", "op": ">", "value": "fsw_hz * 0.5"},
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.1}
+      ]},
+      "implies": "architecture",
+      "explanation": "High-frequency oscillation — likely ZVS loss causing switching noise. At light load or small phase shift, ZVS is lost. Switch to EPS or TPS modulation."
+    },
+    {
+      "id": "phase_shift_hunting",
+      "when": {"all": [
+        {"metric": "zero_crossings_in_tail", "op": ">=", "value": 4},
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.03}
+      ]},
+      "implies": "tuning",
+      "explanation": "Output oscillates slowly — the phase-shift command is hunting. The nonlinear P(phi) relationship causes gain variation. Reduce kp or add nonlinear gain compensation."
+    },
+    {
+      "id": "circulating_current_excess",
+      "when": {"all": [
+        {"metric": "steady_state_abs_error_pct", "op": "<", "value": 5},
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.15}
+      ]},
+      "implies": "architecture",
+      "explanation": "DC output is correct but ripple is high — circulating current from SPS modulation at light load. Switch to EPS or TPS to reduce circulating current."
+    },
+    {
+      "id": "no_response",
+      "when": {"metric": "tail_abs_mean_v", "op": "<", "value": "abs_target * 0.1"},
+      "implies": "implementation",
+      "explanation": "Output never approaches target — implementation error (phase-shift command not reaching the bridges, or wrong timer mapping)."
+    }
+  ]
+}

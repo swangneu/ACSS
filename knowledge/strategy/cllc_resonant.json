@@ -1,0 +1,28 @@
+{
+  "title": "CLLC Resonant Converter Strategy",
+  "topic": "strategy",
+  "topology": "cllc_resonant",
+  "architecture": "llc_freq_control",
+  "power_stage_family": "dc_dc_resonant",
+  "control_objective": "voltage_regulation",
+  "operating_mode": "bidirectional",
+  "plant_features": ["soft_switching", "resonant_tank", "bidirectional"],
+  "tags": ["cllc", "resonant", "frequency_control", "bidirectional", "zvs"],
+  "source_type": "controller_pattern",
+  "source_refs": ["erickson_maksimovic_2001"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "When to use",
+      "text": "Use CLLC for bidirectional isolated DC-DC conversion. CLLC is symmetric — both primary and secondary have series L and parallel C. This enables ZVS on both sides for forward and reverse power flow."
+    },
+    {
+      "heading": "Key difference from LLC",
+      "text": "CLLC has resonant tanks on both sides of the transformer. For reverse power flow, the secondary-side switches must be actively controlled (not just diodes). The gain curve is symmetric for forward and reverse operation."
+    },
+    {
+      "heading": "Controller structure",
+      "text": "Frequency control same as LLC. For bidirectional operation, the controller must switch the active bridge roles when power flow reverses. The frequency command is the same for both directions; the phase relationship between bridges determines power direction."
+    }
+  ]
+}

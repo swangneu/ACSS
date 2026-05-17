@@ -1,0 +1,29 @@
+{
+  "title": "Bidirectional DC-DC Dual-Loop Tuning Rules",
+  "topic": "tuning",
+  "topology": "bidirectional_dcdc",
+  "architecture": "dual_loop",
+  "power_stage_family": "dc_dc_bidirectional",
+  "control_objective": "power_flow_regulation",
+  "tags": ["bidirectional", "battery_interface", "current_loop", "anti_windup", "direction_handover"],
+  "source_type": "tuning_rule",
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Symmetric loop gains",
+      "text": "Tune the current loop with identical gains in both directions of power flow. Asymmetric gains create different small-signal margins in charge versus discharge, which shows up as direction-dependent settling time and is hard to diagnose from a single test condition."
+    },
+    {
+      "heading": "Anti-windup at direction reversal",
+      "text": "At a sign change in the current reference, the inner integrator must be reset or held rather than carried across, otherwise the controller stalls on the wrong side of zero for several time constants. This is the single most common failure on bidirectional designs and is invisible to step-response tests that stay on one side of zero."
+    },
+    {
+      "heading": "Voltage-loop priority by direction",
+      "text": "Buck-side voltage regulation and boost-side voltage regulation involve different small-signal plants. Schedule the outer-loop gains by direction if a single fixed set of gains fails to meet both transient targets. If gain scheduling is not available, design at the worst case (boost direction in CCM, where the RHPZ caps bandwidth)."
+    },
+    {
+      "heading": "Battery-side state handling",
+      "text": "When the load side is a battery, the load is not a pure resistance — battery impedance has frequency dependence and large open-circuit voltage drift. Avoid integrators that try to regulate against the battery's terminal voltage at low frequency; use a current set-point loop instead and let an outer SOC/voltage manager set the reference."
+    }
+  ]
+}

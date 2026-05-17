@@ -1,0 +1,37 @@
+{
+  "title": "Push-Pull Revision Patterns",
+  "topic": "revision",
+  "topology": "push_pull",
+  "power_stage_family": "dc_dc_isolated",
+  "tags": ["push_pull", "revision", "flux_balance", "leakage"],
+  "source_type": "revision_rule",
+  "source_refs": ["erickson_maksimovic_2001"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Overshoot from slow voltage loop",
+      "revision_trigger": "overshoot",
+      "text": "Push-pull overshoot is usually from a slow voltage loop that cannot handle the load step fast enough. If using voltage-mode control, switch to peak-current-mode for faster response and inherent flux balancing."
+    },
+    {
+      "heading": "Slow settling",
+      "revision_trigger": "slow_settling",
+      "text": "If the push-pull settles slowly, check: (1) Is the current loop fast enough? f_ci should be fsw/5 or higher. (2) Is slope compensation too aggressive? Excessive ramp reduces the current-loop gain. (3) Is the transformer saturating from flux imbalance?"
+    },
+    {
+      "heading": "Excess ripple from leakage inductance",
+      "revision_trigger": "excess_ripple",
+      "text": "Push-pull output ripple can be dominated by the leakage-inductance ring with MOSFET output capacitance. Add an RCD snubber across each primary half-winding. The snubber voltage should be 2-3x V_in."
+    },
+    {
+      "heading": "Efficiency from transformer losses",
+      "revision_trigger": "efficiency_shortfall",
+      "text": "Push-pull efficiency is dominated by transformer copper/core losses and switch conduction losses. The controller cannot improve efficiency. Consider: better core material, larger wire gauge, synchronous rectification on the secondary."
+    },
+    {
+      "heading": "Flux imbalance",
+      "revision_trigger": "failed_revision",
+      "text": "If the push-pull shows core saturation (rising current, collapsing output), the flux balance is broken. Verify: per-switch current sensing, symmetric gate drive, D<0.5. If flux imbalance persists, add a small air gap to the transformer core or use current-mode control with per-switch sensing."
+    }
+  ]
+}

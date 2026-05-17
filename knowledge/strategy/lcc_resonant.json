@@ -1,0 +1,28 @@
+{
+  "title": "LCC Resonant Converter Strategy",
+  "topic": "strategy",
+  "topology": "lcc_resonant",
+  "architecture": "llc_freq_control",
+  "power_stage_family": "dc_dc_resonant",
+  "control_objective": "voltage_regulation",
+  "operating_mode": "standalone",
+  "plant_features": ["soft_switching", "resonant_tank"],
+  "tags": ["lcc", "resonant", "frequency_control", "zvs"],
+  "source_type": "controller_pattern",
+  "source_refs": ["steigerwald_1988"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "When to use",
+      "text": "Use LCC for high-output-voltage applications where parasitic capacitance is significant. LCC uses a parallel capacitor instead of a parallel inductor (as in LLC). The parallel capacitor can absorb transformer parasitic capacitance."
+    },
+    {
+      "heading": "Key difference from LLC",
+      "text": "LCC has a parallel capacitor Cp instead of a parallel inductor Lm. The gain characteristics are similar to LLC but the parallel resonant frequency depends on Cp. LCC is preferred when the transformer secondary has significant parasitic capacitance."
+    },
+    {
+      "heading": "Controller structure",
+      "text": "Same as LLC: PI controller with kp in Hz/V and ki in Hz/(V*s). Operate above the series resonant frequency for ZVS. The gain curve shape depends on the ratio of Cp to Cr."
+    }
+  ]
+}

@@ -20,6 +20,26 @@
       "heading": "Ripple response",
       "revision_trigger": "excess_ripple",
       "text": "When ripple violations persist, examine passive sizing and switching ripple paths first; controller gain changes alone rarely remove steady ripple limitations."
+    },
+    {
+      "heading": "Efficiency shortfall response",
+      "revision_trigger": "efficiency_shortfall",
+      "text": "Efficiency shortfalls are mostly a plant-side problem, not a controller-tuning problem. Before adjusting gains, check whether the operating point sits in a high-conduction-loss region (heavy load, low Vin) or a high-switching-loss region (light load, high fsw). Controller-side responses are limited to: (1) lower switching frequency if the plant allows, (2) enable synchronous rectification if available, (3) reduce circulating current set by the current loop reference. Do not raise loop bandwidth to chase efficiency."
+    },
+    {
+      "heading": "Efficiency vs duty-saturation",
+      "revision_trigger": "efficiency_shortfall",
+      "text": "If efficiency is failing together with the controller pegging the duty rail, the plant is undersized or the input voltage is outside the assumed range. Re-check the requirements before tuning further — no controller change recovers efficiency once the converter is in duty-cycle saturation."
+    },
+    {
+      "heading": "Repeated revision failure",
+      "revision_trigger": "failed_revision",
+      "text": "When several revision iterations on the same controller architecture fail to improve the score, the dominant failure mode is almost always an architecture mismatch, not a gain choice. Escalate by switching architecture (e.g. PI to cascaded current-mode, single-loop to multi-loop, linear to resonant for AC tracking), not by tightening the current architecture further."
+    },
+    {
+      "heading": "Stagnation escalation",
+      "revision_trigger": "failed_revision",
+      "text": "If the same diagnosis category repeats across 3 or more iterations with no score improvement, stop revising gains and instead question the plant model and sensor set. Common silent causes: missing current sensor that the chosen architecture assumes, sample time aliased to a plant resonance, unmodelled delay in the simulation harness, or saturation/anti-windup absent from the implementation."
     }
   ]
 }

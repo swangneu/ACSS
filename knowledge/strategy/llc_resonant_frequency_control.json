@@ -1,0 +1,38 @@
+{
+  "title": "LLC Resonant Converter Frequency Control Strategy",
+  "topic": "strategy",
+  "topology": "llc_resonant",
+  "architecture": "llc_freq_control",
+  "power_stage_family": "dc_dc_resonant",
+  "control_objective": "voltage_regulation",
+  "operating_mode": "standalone",
+  "plant_features": ["soft_switching", "resonant_tank"],
+  "tags": ["llc", "resonant", "frequency_control", "zvs"],
+  "source_type": "controller_pattern",
+  "source_refs": ["steigerwald_1988", "erickson_maksimovic_2001"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "When to use",
+      "text": "Use frequency control for LLC resonant converters. The LLC achieves ZVS for primary switches when operating above the series resonant frequency (fsw > fr). The control variable is switching frequency, NOT duty cycle. kp and ki are frequency-controller gains in Hz/V and Hz/(V*s)."
+    },
+    {
+      "heading": "Design formulas",
+      "text": "Series resonant frequency: fr = 1/(2*pi*sqrt(Lr*Cr)). Parallel resonant frequency: fp = 1/(2*pi*sqrt((Lr+Lm)*Cr)). Voltage gain: M = Vout/(Vin/2) for full-bridge, M = Vout/(Vin*N/2) for half-bridge. Frequency range: typically 0.8*fr to 1.5*fr."
+    },
+    {
+      "heading": "Operating regions",
+      "text": "Below fr: ZVS region with high gain, limited by magnetizing current. Above fr: ZVS region with decreasing gain. Between fr and fp: ZCS region for secondary diodes — causes reverse recovery losses. Always operate above fp to avoid ZCS region."
+    },
+    {
+      "heading": "Constraint",
+      "topic": "constraints",
+      "text": "The LLC gain curve is nonlinear. At light load (high Q), the gain curve is flat and frequency must change a lot to regulate. At heavy load, the gain curve is steep and small frequency changes cause large voltage changes. Design the PI for the worst case (light load, minimum gain slope)."
+    },
+    {
+      "heading": "Escalation trigger",
+      "revision_trigger": "failed_revision",
+      "text": "If the LLC frequency range cannot cover the required input voltage range at the given load, the tank design (Lr, Cr, Lm) must be redesigned — this is not a tuning problem. If output ripple is too high, check whether the resonant tank Q is too low."
+    }
+  ]
+}

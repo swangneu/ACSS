@@ -1,0 +1,29 @@
+{
+  "title": "Vienna Rectifier dq-Frame Tuning",
+  "topic": "tuning",
+  "topology": "vienna",
+  "architecture": "pfc_current_mode",
+  "power_stage_family": "ac_dc_rectifier",
+  "tags": ["vienna", "three_phase", "dq", "tuning"],
+  "source_type": "tuning_rule",
+  "source_refs": ["kolar_vienna"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "Bandwidth ordering",
+      "text": "Inner current loop (dq): f_ci ~ fsw/10. Neutral-point balancing loop: f_np ~ 5-10x faster than the voltage loop. Outer voltage loop: f_cv = 10-20 Hz (below 2*f_line for three-phase, i.e., below ~120 Hz for 50 Hz grid)."
+    },
+    {
+      "heading": "Current loop tuning",
+      "text": "The dq current loops are decoupled with feedforward. Set kp for the desired crossover: kp ~ 2*pi*f_ci*L_boost/Vdc. The d-axis and q-axis plants are identical after decoupling. Add ki for zero steady-state error."
+    },
+    {
+      "heading": "Neutral-point balancing",
+      "text": "The neutral-point voltage balance loop adjusts the common-mode duty-cycle offset. Gain should be high enough to correct imbalance within 10-20 line cycles. Too high gain causes audible noise from the capacitors."
+    },
+    {
+      "heading": "Voltage loop tuning",
+      "text": "The voltage loop regulates the total DC-link voltage. kp ~ 2*pi*f_cv*C_dc/Vdc. ki ~ kp*f_cv/5. The voltage loop output is the current amplitude reference for the d-axis current loop."
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "title": "DAB Phase-Shift Control Tuning",
+  "topic": "tuning",
+  "topology": "dab",
+  "architecture": "cascaded",
+  "power_stage_family": "dc_dc_isolated",
+  "tags": ["dab", "phase_shift", "tuning"],
+  "source_type": "tuning_rule",
+  "source_refs": ["de_doncker_dab"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "Phase-shift to power mapping",
+      "text": "The relationship between phase shift and power is nonlinear (sinusoidal). Near phi=0, the sensitivity dP/dphi is low. Near phi=pi/2, sensitivity is high. The PI controller must handle this gain variation across the operating range."
+    },
+    {
+      "heading": "Bandwidth",
+      "text": "Set the voltage-loop crossover at fsw/20 to fsw/10. The plant is essentially a first-order system (L filters the power transfer), so a simple PI works well. Start with kp ~ 2*pi*f_crossover*L_series/Vout."
+    },
+    {
+      "heading": "Bidirectional handover",
+      "text": "When the power reference crosses zero, the phase-shift command must cross zero smoothly. Anti-windup reset at phi=0 prevents the integrator from stalling on the wrong side. Implement a dead-band around phi=0 to prevent chattering."
+    },
+    {
+      "heading": "Gain direction",
+      "text": "Increasing kp improves transient response but may cause phase-shift overshoot (the output oscillates around the target). If the phase-shift command oscillates, reduce kp. For steady-state error, increase ki — but watch for integrator windup at the phase-shift limits."
+    }
+  ]
+}

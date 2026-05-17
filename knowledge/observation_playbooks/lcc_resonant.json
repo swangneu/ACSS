@@ -1,0 +1,38 @@
+{
+  "topology": "lcc_resonant",
+  "applies_to_families": ["dc_dc_resonant"],
+  "description": "LCC resonant converter. Watch gain curve steepness, frequency hunting, and ZVS/ZCS boundary.",
+  "key_signals": ["vout_v", "i_tank_a", "f_cmd_hz"],
+  "metrics": [
+    {"id": "tail_pp_to_mean_ratio", "extractor": "ratio", "args": {"numerator": "tail_pp_v", "denominator": "tail_abs_mean_v"}},
+    {"id": "first_peak_to_tail_ratio", "extractor": "first_peak_to_tail_ratio"},
+    {"id": "dominant_osc_hz", "extractor": "dominant_osc_hz", "args": {"signal": "vout_v"}},
+    {"id": "zero_crossings_in_tail", "extractor": "zero_crossings_in_tail"}
+  ],
+  "pathologies": [
+    {
+      "id": "frequency_hunting",
+      "when": {"all": [
+        {"metric": "zero_crossings_in_tail", "op": ">=", "value": 4},
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.05}
+      ]},
+      "implies": "tuning",
+      "explanation": "Output oscillates slowly — the controller is hunting on the steep part of the gain curve near resonance. Move the operating point to the inductive side."
+    },
+    {
+      "id": "gain_saturation",
+      "when": {"all": [
+        {"metric": "tail_abs_mean_v", "op": "<", "value": "abs_target * 0.8"},
+        {"metric": "steady_state_abs_error_pct", "op": ">", "value": 10}
+      ]},
+      "implies": "architecture",
+      "explanation": "Output cannot reach target — operating at the gain curve peak or beyond. The tank design may not support the required conversion ratio at this load."
+    },
+    {
+      "id": "no_response",
+      "when": {"metric": "tail_abs_mean_v", "op": "<", "value": "abs_target * 0.1"},
+      "implies": "implementation",
+      "explanation": "Output dead — check gate drive, resonant tank connection, and frequency command mapping."
+    }
+  ]
+}

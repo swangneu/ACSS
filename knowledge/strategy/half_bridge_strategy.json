@@ -1,0 +1,32 @@
+{
+  "title": "Half-Bridge Converter Strategy",
+  "topic": "strategy",
+  "topology": "half_bridge",
+  "architecture": "cascaded",
+  "power_stage_family": "dc_dc_isolated",
+  "control_objective": "voltage_regulation",
+  "operating_mode": "standalone",
+  "plant_features": ["split_capacitor", "voltage_doubler", "leakage_spike"],
+  "tags": ["half_bridge", "current_mode", "isolation", "medium_power"],
+  "source_type": "controller_pattern",
+  "source_refs": ["erickson_maksimovic_2001", "kazimierczuk_2008"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Default structure",
+      "text": "Half-bridge uses two switches with a split-capacitor voltage divider to generate a bipolar drive voltage. Duty cycle must stay below 0.5 per switch. Peak-current-mode control is preferred for inherent volt-second balancing and overcurrent protection."
+    },
+    {
+      "heading": "Design formulas",
+      "text": "V_out = D*V_in/(2*N) where N = N_sec/N_pri, D<0.5. The split capacitors must be sized to hold the midpoint voltage within a few percent of V_in/2 under load. Effective output frequency = 2*fsw. Dead time: 50-200ns to prevent shoot-through."
+    },
+    {
+      "heading": "Constraint",
+      "text": "The split-capacitor midpoint voltage drifts if the two capacitors are not well matched or if the duty cycles are asymmetric. This causes DC bias in the transformer. Current-mode control with per-switch sensing corrects this automatically. The voltage stress on each switch is V_in (not V_in/2)."
+    },
+    {
+      "heading": "Escalation trigger",
+      "text": "If the half-bridge shows capacitor midpoint drift, verify the current sensing is per-switch. If the switches are overstressed (V_in > switch rating), consider a full-bridge for higher voltage applications. For power > 1kW, full-bridge is typically more efficient."
+    }
+  ]
+}

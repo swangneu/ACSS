@@ -1,0 +1,27 @@
+{
+  "title": "Kolar Vienna Rectifier Source Metadata",
+  "topic": "source_notes",
+  "source_type": "paper_source",
+  "source_id": "kolar_vienna",
+  "authors": ["Johann W. Kolar", "Hans Ertl", "Franz C. Zach"],
+  "year": 1997,
+  "venue": "IEEE Transactions on Industrial Electronics",
+  "sections": [
+    {
+      "heading": "Vienna rectifier modulation",
+      "claim_id": "vienna_modulation",
+      "claim_type": "design_rule",
+      "text": "The Vienna rectifier is a unidirectional three-phase PWM boost rectifier with inherent three-level modulation. Current control is typically in dq frame. Neutral-point voltage balancing is an additional control requirement that adjusts the common-mode duty-cycle offset.",
+      "source_refs": ["kolar_vienna"],
+      "evidence_strength": "high"
+    },
+    {
+      "heading": "Vienna vs conventional bridge",
+      "claim_id": "vienna_advantages",
+      "claim_type": "design_rule",
+      "text": "Vienna rectifier advantages: only three active switches (vs six in conventional bridge), inherent three-level modulation reduces input current THD, no shoot-through risk. Limitation: unidirectional power flow only (boost mode). Neutral-point balancing required for three-level operation.",
+      "source_refs": ["kolar_vienna"],
+      "evidence_strength": "high"
+    }
+  ]
+}

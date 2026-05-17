@@ -1,0 +1,47 @@
+{
+  "topology": "llc_resonant",
+  "applies_to_families": ["dc_dc_resonant"],
+  "description": "LLC resonant converter. Watch frequency hunting, ZCS loss, and gain saturation.",
+  "key_signals": ["vout_v", "iL_resonant_a"],
+  "metrics": [
+    {"id": "tail_pp_to_mean_ratio", "extractor": "ratio", "args": {"numerator": "tail_pp_v", "denominator": "tail_abs_mean_v"}},
+    {"id": "first_peak_to_tail_ratio", "extractor": "first_peak_to_tail_ratio"},
+    {"id": "dominant_osc_hz", "extractor": "dominant_osc_hz", "args": {"signal": "vout_v"}},
+    {"id": "zero_crossings_in_tail", "extractor": "zero_crossings_in_tail"}
+  ],
+  "pathologies": [
+    {
+      "id": "frequency_hunting",
+      "when": {"all": [
+        {"metric": "zero_crossings_in_tail", "op": ">=", "value": 4},
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.03}
+      ]},
+      "implies": "tuning",
+      "explanation": "Output oscillates slowly — the frequency command is hunting around the operating point on the gain curve. Reduce kp or add a rate limiter on the frequency command."
+    },
+    {
+      "id": "zcs_loss",
+      "when": {"all": [
+        {"metric": "dominant_osc_hz", "op": ">", "value": "fsw_hz * 0.8"},
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.1}
+      ]},
+      "implies": "architecture",
+      "explanation": "High-frequency oscillation near fsw — likely operating in ZCS region (between fr and fp). Increase switching frequency to move above fp."
+    },
+    {
+      "id": "gain_saturation",
+      "when": {"all": [
+        {"metric": "tail_abs_mean_v", "op": "<", "value": "abs_target * 0.8"},
+        {"metric": "steady_state_abs_error_pct", "op": ">", "value": 10}
+      ]},
+      "implies": "architecture",
+      "explanation": "Output cannot reach target — the gain curve does not provide sufficient gain at the operating frequency. The tank design (Lr, Cr, Lm) needs redesign."
+    },
+    {
+      "id": "no_response",
+      "when": {"metric": "tail_abs_mean_v", "op": "<", "value": "abs_target * 0.1"},
+      "implies": "implementation",
+      "explanation": "Output never approaches target — implementation error (frequency command not reaching the gate drivers, or wrong timer mapping)."
+    }
+  ]
+}

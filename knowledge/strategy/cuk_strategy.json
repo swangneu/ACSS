@@ -1,0 +1,32 @@
+{
+  "title": "Cuk Converter Strategy",
+  "topic": "strategy",
+  "topology": "cuk",
+  "architecture": "cascaded",
+  "power_stage_family": "dc_dc_nonisolated",
+  "control_objective": "voltage_regulation",
+  "operating_mode": "standalone",
+  "plant_features": ["rhpz", "inverted_output", "continuous_current"],
+  "tags": ["cuk", "rhpz", "inverted_output", "current_loop"],
+  "source_type": "controller_pattern",
+  "source_refs": ["erickson_maksimovic_2001", "kazimierczuk_2008"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Default structure",
+      "text": "Cuk converter produces an inverted output voltage. In CCM it has an RHPZ similar to boost. Prefer cascaded current-inner voltage-outer control. The inner loop can regulate either L1 (input) or L2 (output) current. Output current sensing for the inner loop gives faster transient response."
+    },
+    {
+      "heading": "Design formulas",
+      "text": "V_out = -D*V_in/(1-D). RHPZ: f_RHPZ = (1-D)^2*R/(2*pi*L2) when sensing L2 current. CCM/DCM boundary depends on both inductors. Coupling capacitor C1 voltage = V_in + V_out (in magnitude). Voltage-loop crossover: f_c < f_RHPZ/4."
+    },
+    {
+      "heading": "Constraint",
+      "text": "The coupling capacitor C1 carries high RMS ripple current and must be rated for the full input+output voltage. The inverted output means the feedback reference must be negative (or the sense circuit must invert). The RHPZ limits bandwidth in CCM, especially at high duty cycle."
+    },
+    {
+      "heading": "Escalation trigger",
+      "text": "If the Cuk cannot meet transient specs in CCM due to RHPZ, consider: (1) DCM operation (eliminates RHPZ but increases ripple), (2) coupled-inductor design to reduce component count, or (3) flyback if isolation is needed."
+    }
+  ]
+}

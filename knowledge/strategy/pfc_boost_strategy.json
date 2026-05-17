@@ -1,0 +1,36 @@
+{
+  "title": "Boost PFC Strategy",
+  "topic": "strategy",
+  "topology": "pfc",
+  "architecture": "average_current_mode",
+  "power_stage_family": "ac_dc_rectifier",
+  "control_objective": "power_factor_correction",
+  "operating_mode": "grid_connected",
+  "plant_features": ["line_frequency_envelope", "rhpz", "double_line_ripple"],
+  "tags": ["pfc", "boost", "power_factor", "current_mode"],
+  "source_type": "controller_pattern",
+  "source_refs": ["erickson_maksimovic_2001", "ti_current_mode_control_handbook"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "Default structure",
+      "text": "Boost PFC is the standard single-phase power factor correction topology. A three-loop structure: inner current loop shapes the input current to follow the rectified line voltage, outer voltage loop regulates the DC bus, and a multiplier generates the current reference from the voltage error and the line voltage waveform."
+    },
+    {
+      "heading": "Design formulas",
+      "text": "Current-loop crossover: f_ci ~ fsw/10. Voltage-loop crossover: f_cv < 2*f_line/10 (~10-20Hz for 50/60Hz). The voltage loop must be slow enough to avoid distorting the current reference. RHPZ: f_RHPZ = R_load*(1-D)^2/(2*pi*L). At high line and light load, f_RHPZ is lowest."
+    },
+    {
+      "heading": "Constraint",
+      "text": "The 2*f_line ripple on the DC bus is inherent. If the voltage-loop bandwidth is too high, this ripple modulates the current reference, causing input current distortion (cross-over distortion). The voltage-loop compensator must have low gain at 2*f_line. Output capacitor sizing: C_out >= P_out/(2*pi*f_line*V_ripple*V_out)."
+    },
+    {
+      "heading": "Inrush limiting",
+      "text": "At startup, the output capacitor charges through the boost diode with no current limiting. Add an inrush limiting circuit (NTC relay or pre-charge MOSFET) or ramp the voltage reference during startup. The current loop must be enabled before the voltage loop reaches regulation."
+    },
+    {
+      "heading": "Escalation trigger",
+      "text": "If the PFC cannot meet THD or power factor specs: (1) increase current-loop bandwidth, (2) add feedforward of the line voltage, (3) consider interleaved PFC for lower current ripple. If efficiency is the issue, consider totem-pole PFC with GaN/SiC for bridgeless operation."
+    }
+  ]
+}

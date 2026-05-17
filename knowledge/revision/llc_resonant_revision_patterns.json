@@ -1,0 +1,37 @@
+{
+  "title": "LLC Resonant Converter Revision Patterns",
+  "topic": "revision",
+  "topology": "llc_resonant",
+  "power_stage_family": "dc_dc_resonant",
+  "tags": ["llc", "resonant", "revision", "frequency_control"],
+  "source_type": "revision_rule",
+  "source_refs": ["steigerwald_1988"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "Overshoot near resonance",
+      "revision_trigger": "overshoot",
+      "text": "LLC overshoot is usually caused by the frequency command overshooting the target operating point on the gain curve. The gain curve is steep near resonance, so a small frequency overshoot causes a large voltage overshoot. Reduce kp or add a rate limiter on the frequency command."
+    },
+    {
+      "heading": "Slow settling at light load",
+      "revision_trigger": "slow_settling",
+      "text": "LLC slow settling at light load is common because the gain curve is flat. This is a plant limitation, not a tuning problem. If the specification requires fast settling at light load, the tank design may need to change (lower Lm to increase the gain slope)."
+    },
+    {
+      "heading": "Output ripple",
+      "revision_trigger": "excess_ripple",
+      "text": "Output ripple on an LLC is dominated by the output capacitor ESR and the secondary-side current waveform. At the resonant frequency, the current waveform is nearly sinusoidal, which gives low ripple. If ripple is high, check whether the operating point is near the ZCS boundary."
+    },
+    {
+      "heading": "Efficiency shortfall",
+      "revision_trigger": "efficiency_shortfall",
+      "text": "LLC efficiency is dominated by conduction losses in the resonant tank and transformer. Verify the magnetizing current is not excessive (increases circulating energy). Operating closer to fr reduces circulating current but limits the gain range."
+    },
+    {
+      "heading": "Tank design mismatch",
+      "revision_trigger": "failed_revision",
+      "text": "If the LLC fails across multiple iterations, the most likely cause is a tank design mismatch — the Lr, Cr, and Lm values do not produce the required gain at the required load. This requires redesigning the resonant tank, not retuning the controller."
+    }
+  ]
+}

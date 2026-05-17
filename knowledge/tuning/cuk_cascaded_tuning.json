@@ -1,0 +1,24 @@
+{
+  "title": "Cuk Cascaded Tuning Rules",
+  "topic": "tuning",
+  "topology": "cuk",
+  "architecture": "cascaded",
+  "tags": ["cuk", "current_loop", "rhpz", "tuning"],
+  "source_type": "tuning_rule",
+  "source_refs": ["erickson_maksimovic_2001"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Inner current loop",
+      "text": "Sense L2 (output inductor) current for the inner loop — this gives direct control of the output dynamics. Bandwidth: f_ci ~ fsw/5 to fsw/10. PI compensator. The inverted output requires sign-inverted feedback or a negative reference in the controller."
+    },
+    {
+      "heading": "Outer voltage loop",
+      "text": "f_cv < f_RHPZ/4 where f_RHPZ = (1-D)^2*R/(2*pi*L2). Design for worst case: minimum R (max load), maximum D. Start with kp = 2*pi*f_cv*C_out and ki = kp * f_cv / 5. The integrator must be anti-windup clamped because the duty cycle saturates at 0 and 1."
+    },
+    {
+      "heading": "Revision note",
+      "text": "If the Cuk oscillates at fsw/2, this is subharmonic instability from peak-current-mode — add slope compensation >= inductor downslope / 2. If it cannot meet transient specs in CCM, consider DCM operation or a different topology."
+    }
+  ]
+}

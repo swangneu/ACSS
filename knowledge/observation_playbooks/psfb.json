@@ -1,0 +1,39 @@
+{
+  "topology": "psfb",
+  "applies_to_families": ["dc_dc_isolated"],
+  "description": "Phase-shifted full-bridge. Watch ZVS loss, duty-cycle loss, and secondary ringing.",
+  "key_signals": ["vout_v", "i_pri_a", "v_pri_v"],
+  "metrics": [
+    {"id": "tail_pp_to_mean_ratio", "extractor": "ratio", "args": {"numerator": "tail_pp_v", "denominator": "tail_abs_mean_v"}},
+    {"id": "first_peak_to_tail_ratio", "extractor": "first_peak_to_tail_ratio"},
+    {"id": "dominant_osc_hz", "extractor": "dominant_osc_hz", "args": {"signal": "vout_v"}},
+    {"id": "zero_crossings_in_tail", "extractor": "zero_crossings_in_tail"}
+  ],
+  "pathologies": [
+    {
+      "id": "zvs_loss",
+      "when": {"all": [
+        {"metric": "dominant_osc_hz", "op": ">", "value": "fsw_hz * 0.5"},
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.03}
+      ]},
+      "implies": "architecture",
+      "explanation": "High-frequency ringing on primary — ZVS is lost, causing hard-switching transients. Occurs at light load when leakage inductance energy is insufficient."
+    },
+    {
+      "id": "subharmonic_oscillation",
+      "when": {"all": [
+        {"metric": "dominant_osc_hz", "op": ">", "value": 0},
+        {"metric": "dominant_osc_hz", "op": "<", "value": "fsw_hz * 0.6"},
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.05}
+      ]},
+      "implies": "architecture_or_tuning",
+      "explanation": "Oscillation below fsw — subharmonic instability or excessive duty-cycle loss."
+    },
+    {
+      "id": "no_response",
+      "when": {"metric": "tail_abs_mean_v", "op": "<", "value": "abs_target * 0.1"},
+      "implies": "implementation",
+      "explanation": "Output dead — check gate drive, phase-shift enable, transformer connections."
+    }
+  ]
+}

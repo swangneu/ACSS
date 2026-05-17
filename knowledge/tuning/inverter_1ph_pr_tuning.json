@@ -1,0 +1,34 @@
+{
+  "title": "Single-Phase Inverter PR (Proportional-Resonant) Tuning Rules",
+  "topic": "tuning",
+  "topology": "inverter_1ph",
+  "architecture": "pr",
+  "power_stage_family": "dc_ac_inverter",
+  "control_objective": "voltage_regulation",
+  "tags": ["single_phase", "inverter", "resonant_controller", "harmonic_compensator", "sampling"],
+  "source_type": "tuning_rule",
+  "source_refs": ["teodorescu_grid_converters_2011"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Resonant frequency placement",
+      "text": "Place the resonant pole exactly at the output fundamental (50 or 60 Hz, or the islanded reference frequency). Even small offset produces a steady-state phase error that no proportional term recovers. If the system must track grid frequency, make the resonant frequency a function of the measured grid frequency rather than a fixed constant."
+    },
+    {
+      "heading": "Damping of the resonant peak",
+      "text": "An ideal PR controller has infinite gain at the resonant frequency, which is unrealizable on a digital implementation. Use a damped form (k_r * 2*ω_c*s / (s^2 + 2*ω_c*s + ω_0^2)) and start with ω_c ≈ 5 to 10 rad/s. Lower damping gives better tracking but reduces the system phase margin near ω_0."
+    },
+    {
+      "heading": "Harmonic compensators",
+      "text": "For nonlinear loads, add resonant compensators at the 3rd, 5th, and 7th harmonics, each with its own damping. Tune each compensator gain individually — combined gain is not a simple sum because the harmonics interact through the load current. Add them one at a time and verify margin after each."
+    },
+    {
+      "heading": "Discretization",
+      "text": "PR controllers are sensitive to discretization method. Bilinear (Tustin) with prewarping at the resonant frequency preserves the pole location best. Forward or backward Euler shifts the resonant pole and introduces a steady-state error proportional to the sample time."
+    },
+    {
+      "heading": "Sample time",
+      "text": "Use a sample time at least 20x faster than the highest compensated harmonic. For 7th harmonic compensation on 60 Hz, sample at >= 8.4 kHz. Below this, the resonant poles alias and the controller can become unstable."
+    }
+  ]
+}

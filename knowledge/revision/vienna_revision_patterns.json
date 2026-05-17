@@ -1,0 +1,32 @@
+{
+  "title": "Vienna Rectifier Revision Patterns",
+  "topic": "revision",
+  "topology": "vienna",
+  "power_stage_family": "ac_dc_rectifier",
+  "tags": ["vienna", "rectifier", "revision", "neutral_point", "dq"],
+  "source_type": "revision_rule",
+  "source_refs": ["kolar_vienna"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Current distortion from modulation",
+      "revision_trigger": "excess_ripple",
+      "text": "Vienna rectifier current distortion is caused by: (1) incorrect space-vector modulation at the sector boundaries, (2) insufficient current-loop bandwidth, (3) neutral-point voltage oscillation. Check the modulation algorithm and increase current-loop crossover if below fsw/10."
+    },
+    {
+      "heading": "Neutral-point voltage oscillation",
+      "revision_trigger": "excess_ripple",
+      "text": "The split DC-bus capacitors develop a voltage imbalance. Add a balancing loop that adjusts the modulation to equalize the capacitor voltages. Bandwidth ~ f_ci/10. If oscillation persists, increase the DC-bus capacitance."
+    },
+    {
+      "heading": "Slow settling of DC bus",
+      "revision_trigger": "slow_settling",
+      "text": "If the DC bus settles slowly after a load step, the voltage-loop bandwidth is too low. Increase kp/ki, but keep f_cv < 2*f_line to avoid current distortion. The Vienna rectifier voltage loop is inherently slow (same as all PFC topologies)."
+    },
+    {
+      "heading": "Architecture limit",
+      "revision_trigger": "failed_revision",
+      "text": "If the Vienna rectifier cannot meet THD or power factor specs, consider: (1) higher switching frequency, (2) interleaved Vienna rectifier, (3) active front-end with full-bridge for bidirectional capability."
+    }
+  ]
+}

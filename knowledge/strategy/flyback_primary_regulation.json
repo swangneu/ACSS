@@ -9,17 +9,30 @@
   "plant_features": ["magnetizing_current", "ccm_dcm_transition"],
   "tags": ["flyback", "isolation", "current_loop"],
   "source_type": "controller_pattern",
-  "source_refs": ["ti_current_mode_control_handbook"],
-  "confidence": "medium",
+  "source_refs": ["erickson_maksimovic_2001", "ti_current_mode_control_handbook"],
+  "confidence": "high",
   "sections": [
     {
       "heading": "When to use",
-      "text": "For flyback converters, start with current-mode control because it simplifies compensation and handles transformer magnetizing current more robustly than a pure voltage-mode approach."
+      "text": "For flyback converters, start with current-mode control. For low-power (<75W) isolated applications, the flyback is the default choice. Primary-side regulation (PSR) eliminates the optocoupler but limits transient response. Secondary-side feedback with optocoupler gives better regulation."
+    },
+    {
+      "heading": "Design formulas",
+      "text": "Turns ratio N = Np/Ns. CCM: Vout = Vin*D/(N*(1-D)). DCM: Vout = Vin*D*sqrt(R_load/(2*L_mag*fsw))/N. RHPZ in CCM: f_RHPZ = R_load*(1-D)^2/(2*pi*L_mag*D). Slope compensation: m_c >= (Vout*N+Vin)/(2*L_mag*fsw)."
+    },
+    {
+      "heading": "CCM/DCM transition",
+      "text": "The CCM/DCM boundary occurs at I_load_boundary = (Vin-Vout*D)*D/(2*L_mag*fsw*N). Below this load, the plant changes from double-pole+RHPZ to single-pole. Design compensation for worst case (CCM at full load) and accept larger margins in DCM."
     },
     {
       "heading": "Constraint",
       "topic": "constraints",
-      "text": "If the design spans CCM and DCM, document the intended operating region clearly because the small-signal behavior and compensation margin can change substantially."
+      "text": "Leading-edge blanking on the current sense signal is mandatory for flyback to filter the leakage inductance spike at turn-on. Typical blanking time: 100-300ns depending on leakage. If the design spans CCM and DCM, document the intended operating region."
+    },
+    {
+      "heading": "Escalation trigger",
+      "revision_trigger": "slow_settling",
+      "text": "If flyback with PSR fails transient specs, escalate to secondary-side feedback with optocoupler. If current-mode still fails, the flyback topology itself may be the limit — consider forward or half-bridge for higher power."
     }
   ]
 }

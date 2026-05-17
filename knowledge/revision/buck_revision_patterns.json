@@ -1,0 +1,42 @@
+{
+  "title": "Buck Converter Revision Patterns",
+  "topic": "revision",
+  "topology": "buck",
+  "power_stage_family": "dc_dc_nonisolated",
+  "tags": ["buck", "revision", "overshoot", "settling", "ripple", "load_step"],
+  "source_type": "revision_rule",
+  "source_refs": ["erickson_maksimovic_2001"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Overshoot on load step",
+      "revision_trigger": "overshoot",
+      "text": "For a buck under a load step, the dominant overshoot mechanism is a slow voltage loop responding to the inductor current's inability to track the load demand. The right fix is usually to add an inner current loop (cascaded structure) rather than lowering the voltage-loop proportional gain — lowering Kp makes settling worse without reducing the underlying current-rise lag."
+    },
+    {
+      "heading": "Overshoot on startup",
+      "revision_trigger": "overshoot",
+      "text": "Startup overshoot on a buck is almost always an anti-windup or integrator-preload issue, not a gain issue. Verify that the voltage-loop integrator clamps when the duty saturates and that soft-start ramps the reference rather than stepping it. Reducing Ki blindly will slow steady-state recovery without fixing the startup spike."
+    },
+    {
+      "heading": "Slow settling under disturbance",
+      "revision_trigger": "slow_settling",
+      "text": "If a buck settles slowly after a load step but is stable, the controller bandwidth is too low relative to the LC corner. Promote to cascaded current-mode so the inner loop handles the fast current dynamics and the outer voltage loop can run wider. A single PI rarely achieves the required bandwidth without overshoot on a buck with light damping."
+    },
+    {
+      "heading": "Excess output ripple",
+      "revision_trigger": "excess_ripple",
+      "text": "Steady-state output ripple on a buck is set primarily by the output capacitor ESR and the inductor current ripple, not by the controller. Before changing gains, recheck L, C, and ESR. Controller actions: (a) move sample time so the regulator does not chase switching ripple, (b) add a low-pass on the voltage sense path, (c) lower the loop bandwidth so the controller stops modulating duty in response to ripple."
+    },
+    {
+      "heading": "Subharmonic oscillation",
+      "revision_trigger": "excess_ripple",
+      "text": "If the output shows period-doubling or oscillation near fsw/2, this is subharmonic instability from peak-current-mode control without sufficient slope compensation. Add artificial ramp with slope >= inductor downslope / 2. Do not try to fix this with voltage-loop gain changes — it is an architecture-level issue."
+    },
+    {
+      "heading": "Efficiency at light load",
+      "revision_trigger": "efficiency_shortfall",
+      "text": "Buck efficiency at light load is dominated by switching and gate-drive losses. The controller-side levers are: enable pulse-skipping or DCM operation if the plant supports it, lower the switching frequency, or transition to a burst-mode operating region. Do not address light-load efficiency by retuning voltage-loop gains."
+    }
+  ]
+}

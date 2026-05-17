@@ -1,0 +1,30 @@
+{
+  "title": "Buck-Boost Cascaded Tuning Rules",
+  "topic": "tuning",
+  "topology": "buck_boost",
+  "architecture": "cascaded",
+  "power_stage_family": "dc_dc_nonisolated",
+  "control_objective": "voltage_regulation",
+  "tags": ["buck_boost", "current_loop", "wide_range", "sampling", "rhpz"],
+  "source_type": "tuning_rule",
+  "source_refs": ["erickson_maksimovic_2001"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Operating-point gain variation",
+      "text": "The small-signal control-to-output gain of a buck-boost varies strongly with duty cycle. If the input range is wide, design the voltage-loop gain at the worst-case operating point (maximum duty, minimum input) and verify margin at the boost extreme rather than the buck extreme."
+    },
+    {
+      "heading": "Right-half-plane zero",
+      "text": "In CCM boost-mode operation, a buck-boost exhibits a right-half-plane zero whose frequency scales with load current and (1 - D)^2. Place the voltage-loop crossover at least a factor of 3 below the worst-case RHPZ frequency; chasing higher bandwidth produces non-minimum-phase undershoot that no inner current loop can hide."
+    },
+    {
+      "heading": "Inner current loop bandwidth",
+      "text": "Set the inner current-loop crossover roughly fsw/10 in CCM. In DCM the small-signal current dynamics collapse to a single pole and the current loop can be made much faster, but verify the mode boundary explicitly — switching between CCM and DCM mid-transient is a frequent source of evaluation failures."
+    },
+    {
+      "heading": "Sign convention",
+      "text": "Inverting buck-boost topologies require careful sign tracking in both sensor scaling and controller output. A polarity error here is indistinguishable in early simulation from an under-tuned controller — verify open-loop step response polarity before tightening gains."
+    }
+  ]
+}

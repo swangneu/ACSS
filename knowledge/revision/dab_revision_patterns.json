@@ -1,0 +1,37 @@
+{
+  "title": "DAB Converter Revision Patterns",
+  "topic": "revision",
+  "topology": "dab",
+  "power_stage_family": "dc_dc_isolated",
+  "tags": ["dab", "phase_shift", "revision", "bidirectional"],
+  "source_type": "revision_rule",
+  "source_refs": ["de_doncker_dab"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "Overshoot from phase-shift overshoot",
+      "revision_trigger": "overshoot",
+      "text": "DAB overshoot is caused by the phase-shift command overshooting the target. The power-phase-shift relationship is sinusoidal, so the plant gain varies with operating point. Reduce kp or add nonlinear gain compensation that normalizes the gain variation."
+    },
+    {
+      "heading": "Slow settling near zero power",
+      "revision_trigger": "slow_settling",
+      "text": "DAB slow settling near zero power transfer is expected because the plant gain (dP/dphi) is near zero at phi=0. This is inherent to the topology. If the application requires fast regulation near zero power, consider adding a small bias phase shift."
+    },
+    {
+      "heading": "Output ripple",
+      "revision_trigger": "excess_ripple",
+      "text": "DAB output ripple is determined by the inductor current ripple and the output capacitor. At high phase shift, the current waveform becomes more triangular. Verify the output capacitor sizing before changing gains."
+    },
+    {
+      "heading": "Efficiency at light load",
+      "revision_trigger": "efficiency_shortfall",
+      "text": "DAB efficiency at light load is poor with SPS control due to circulating current. Switch to EPS or TPS modulation to reduce circulating current. This is an architecture-level change, not a tuning fix."
+    },
+    {
+      "heading": "Repeated failure",
+      "revision_trigger": "failed_revision",
+      "text": "If DAB fails across iterations, consider the modulation scheme (SPS vs EPS vs TPS) and whether ZVS is being maintained. If ZVS is lost at the operating point, the topology may need a different modulation strategy or a wider series inductance."
+    }
+  ]
+}

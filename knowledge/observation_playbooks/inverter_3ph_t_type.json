@@ -1,0 +1,32 @@
+{
+  "topology": "inverter_3ph_t_type",
+  "applies_to_families": ["dc_ac_inverter"],
+  "description": "Three-level T-type inverter. Watch neutral-point balance, THD, and bidirectional switch stress.",
+  "key_signals": ["va_v", "vb_v", "vc_v", "ia_a", "ib_a", "ic_a"],
+  "metrics": [
+    {"id": "phase_balance_pct", "extractor": "phase_balance_pct"},
+    {"id": "thd_pct", "extractor": "thd_pct"},
+    {"id": "fundamental_hz_va", "extractor": "fundamental_hz", "args": {"signal": "va_v"}},
+    {"id": "tail_pp_to_mean_ratio", "extractor": "ratio", "args": {"numerator": "tail_pp_v", "denominator": "tail_abs_mean_v"}}
+  ],
+  "pathologies": [
+    {
+      "id": "phase_imbalance",
+      "when": {"metric": "phase_balance_pct", "op": ">", "value": 5.0},
+      "implies": "tuning_or_implementation",
+      "explanation": "Three-phase amplitude or phase imbalance. Check dq decoupling, PLL, and neutral-point balancing."
+    },
+    {
+      "id": "thd_excessive",
+      "when": {"metric": "thd_pct", "op": ">", "value": 5.0},
+      "implies": "tuning_or_architecture",
+      "explanation": "THD exceeds spec. Check LCL filter, active damping, dead-time. T-type zero-level path has different impedance than NPC — verify dead-time is not causing excessive distortion."
+    },
+    {
+      "id": "no_response",
+      "when": {"metric": "tail_abs_mean_v", "op": "<", "value": "abs_target * 0.1"},
+      "implies": "implementation",
+      "explanation": "Output dead — check DC bus, gate drive, bidirectional switch enable, and modulation."
+    }
+  ]
+}

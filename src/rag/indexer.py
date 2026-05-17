@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 from src.rag.contracts import KnowledgeChunk
 from src.rag.store import save_index
+from src.rag.validator import validate_knowledge_base
+
+_log = logging.getLogger(__name__)
 
 
 def build_index(knowledge_root: Path, index_path: Path) -> list[KnowledgeChunk]:
+    report = validate_knowledge_base(knowledge_root)
+    report.log(_log)
     chunks: list[KnowledgeChunk] = []
     for path in sorted(knowledge_root.rglob('*.json')):
         if path.name == index_path.name:

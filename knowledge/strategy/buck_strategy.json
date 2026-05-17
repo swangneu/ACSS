@@ -1,0 +1,32 @@
+{
+  "title": "Buck Converter Strategy",
+  "topic": "strategy",
+  "topology": "buck",
+  "architecture": "cascaded",
+  "power_stage_family": "dc_dc_nonisolated",
+  "control_objective": "voltage_regulation",
+  "operating_mode": "standalone",
+  "plant_features": ["lc_resonance", "load_transient"],
+  "tags": ["buck", "current_loop", "lc_filter", "voltage_regulation"],
+  "source_type": "controller_pattern",
+  "source_refs": ["erickson_maksimovic_2001", "kazimierczuk_2008"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "Default structure",
+      "text": "Buck is the simplest step-down converter. Prefer cascaded current-inner voltage-outer control. The inner loop regulates inductor current, providing fast current limiting and damping the LC resonance. Single-loop PI is feasible but gives slower transients."
+    },
+    {
+      "heading": "Design formulas",
+      "text": "V_out = D*V_in. LC resonance: f_LC = 1/(2*pi*sqrt(L*C)). Current-loop crossover: f_ci ~ fsw/5 to fsw/10. Voltage-loop crossover: f_cv < f_LC/3 for adequate phase margin. Inductor current ripple: delta_I = (V_in - V_out)*D/(L*fsw)."
+    },
+    {
+      "heading": "Constraint",
+      "text": "The buck has no RHPZ, so the voltage-loop bandwidth is limited only by the LC resonance and the switching frequency. The LC resonance peak must be damped — either by the current loop (cascaded) or by adding a zero in the voltage compensator (single-loop PI). ESR of the output capacitor dominates steady-state ripple."
+    },
+    {
+      "heading": "Escalation trigger",
+      "text": "If the buck cannot meet transient specs with a single PI, promote to cascaded current-mode. If the cascaded buck still cannot meet specs, the limitation is passive sizing (L, C) or the switching frequency — not the controller."
+    }
+  ]
+}

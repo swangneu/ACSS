@@ -14,12 +14,21 @@
   "sections": [
     {
       "heading": "When to use",
-      "text": "Use an inner current loop with a slower outer voltage loop for boost converters when transient performance must improve without pushing the voltage loop near the right-half-plane-zero limit."
+      "text": "Use an inner current loop with a slower outer voltage loop for boost converters when transient performance must improve without pushing the voltage loop near the right-half-plane-zero limit. Average current mode is preferred over peak current mode for boost PFC and high-power boost because it provides better noise immunity and more predictable loop gain."
+    },
+    {
+      "heading": "Design formulas",
+      "text": "Voltage-loop crossover: f_c < f_RHPZ/4 where f_RHPZ = R_load*(1-D)^2/(2*pi*L). Inner current-loop crossover: f_ci ~ fsw/10. Duty cycle: D = 1 - Vin/Vout in CCM. Inductor ripple: delta_IL = Vin*D/(L*fsw). Output capacitor for load step: C > I_step/(2*pi*f_c*delta_V_max)."
+    },
+    {
+      "heading": "Constraint",
+      "topic": "constraints",
+      "text": "The boost RHPZ frequency drops with increasing load resistance and increasing duty cycle. At maximum Vin/Vout ratio (worst case), the RHPZ is at its lowest frequency. Always verify stability at this operating point, not just at nominal conditions."
     },
     {
       "heading": "Escalation trigger",
       "revision_trigger": "slow_settling",
-      "text": "If a plain voltage loop becomes sluggish or overshoots as gains rise, move to average-current-mode control instead of trying to force a high-bandwidth single loop."
+      "text": "If a plain voltage loop becomes sluggish or overshoots as gains rise, move to average-current-mode control. If current-mode still fails, check whether the RHPZ is limiting bandwidth below the requirement — if so, this is an architecture limit and the topology may need to change to interleaved boost or a non-boost structure."
     }
   ]
 }

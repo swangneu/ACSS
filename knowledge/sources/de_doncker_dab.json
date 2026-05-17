@@ -1,0 +1,27 @@
+{
+  "title": "De Doncker DAB Converter Source Metadata",
+  "topic": "source_notes",
+  "source_type": "paper_source",
+  "source_id": "de_doncker_dab",
+  "authors": ["Rik W. De Doncker"],
+  "year": 1991,
+  "venue": "IEEE Transactions on Industry Applications",
+  "sections": [
+    {
+      "heading": "Phase-shift power transfer",
+      "claim_id": "dab_phase_shift_control",
+      "claim_type": "design_rule",
+      "text": "DAB power transfer is P = Vin*Vout*phi*(pi-|phi|)/(2*pi*L*fsw*N). Single-phase-shift is simplest but has high circulating current at light load. Extended-phase-shift or triple-phase-shift adds degrees of freedom for ZVS maintenance and efficiency optimization.",
+      "source_refs": ["de_doncker_dab"],
+      "evidence_strength": "high"
+    },
+    {
+      "heading": "ZVS constraint",
+      "claim_id": "dab_zvs_constraint",
+      "claim_type": "design_rule",
+      "text": "ZVS is maintained when the transformer current reverses polarity during dead time. At light load or small phase shift, the current magnitude is insufficient to charge/discharge the MOSFET output capacitances, and ZVS is lost. This is the fundamental limitation of SPS control.",
+      "source_refs": ["de_doncker_dab"],
+      "evidence_strength": "high"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "title": "Push-Pull Cascaded Tuning Rules",
+  "topic": "tuning",
+  "topology": "push_pull",
+  "architecture": "cascaded",
+  "tags": ["push_pull", "current_mode", "flux_balance", "tuning"],
+  "source_type": "tuning_rule",
+  "source_refs": ["erickson_maksimovic_2001", "kazimierczuk_2008"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Inner current loop",
+      "text": "Use per-switch peak-current sensing (one CT per primary switch). The current loop must be fast enough to prevent flux imbalance: f_ci ~ fsw/5. Add slope compensation with ramp >= V_out*N_pri/N_sec / (2*L_out*fsw) to prevent subharmonic oscillation at D approaching 0.5."
+    },
+    {
+      "heading": "Outer voltage loop",
+      "text": "Effective output ripple frequency is 2*fsw, so the voltage loop can run at f_cv ~ 2*fsw/10 to 2*fsw/20. PI compensator. Start with kp = 2*pi*f_cv*C_out / (V_out * 0.01) and ki = kp * f_cv / 10."
+    },
+    {
+      "heading": "Revision note",
+      "text": "If the push-pull shows rising magnetizing current (visible as asymmetric primary current), the flux-balance is broken. Verify: (1) current sensing is per-switch, not averaged, (2) slope compensation is equal on both phases, (3) the duty cycle stays below 0.5."
+    }
+  ]
+}

@@ -6,3 +6,4 @@ src/llm/local_secrets.py
 papers/
 .matlab_runtime/
 .claude/
+docs/knowledge_enhancement_plan.md

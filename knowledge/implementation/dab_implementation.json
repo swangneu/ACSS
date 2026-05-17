@@ -1,0 +1,23 @@
+{
+  "title": "DAB Implementation Patterns",
+  "topic": "implementation",
+  "power_stage_family": "dc_dc_isolated",
+  "tags": ["dab", "phase_shift", "bidirectional", "zvs"],
+  "source_type": "implementation_rule",
+  "source_refs": ["de_doncker_dab"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "Phase-shift generation",
+      "text": "Generate the phase-shift command as a timer compare value, not a duty-cycle register. Phase-shift resolution must be fine enough for smooth power control — at least 10 bits over the 0-to-pi range. Coarse resolution causes quantization-induced oscillation."
+    },
+    {
+      "heading": "Transformer current sensing",
+      "text": "For current-mode control of DAB, sense the transformer series inductor current (not the output current). The inductor current is the actual control-relevant signal. Use a current transformer or sense resistor in the primary path."
+    },
+    {
+      "heading": "Bidirectional handover",
+      "text": "When the power reference crosses zero, the phase-shift command must cross zero smoothly. Implement anti-windup that resets the integrator when the phase-shift command crosses zero. A small dead-band around phi=0 prevents chattering."
+    }
+  ]
+}

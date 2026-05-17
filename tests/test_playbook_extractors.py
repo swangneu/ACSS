@@ -71,9 +71,8 @@ class PlaybookResolutionTests(unittest.TestCase):
     def test_buck_resolves_exact(self) -> None:
         self.assertEqual(load_playbook('buck')['topology'], 'buck')
 
-    def test_boost_falls_back_to_family_match(self) -> None:
-        # Buck playbook lists "dc_dc_nonisolated" so boost should match that family.
-        self.assertEqual(load_playbook('boost')['topology'], 'buck')
+    def test_boost_resolves_exact(self) -> None:
+        self.assertEqual(load_playbook('boost')['topology'], 'boost')
 
     def test_inverter_3ph_resolves_exact(self) -> None:
         self.assertEqual(load_playbook('inverter_3ph')['topology'], 'inverter_3ph')
@@ -81,9 +80,8 @@ class PlaybookResolutionTests(unittest.TestCase):
     def test_unknown_topology_falls_back_to_default(self) -> None:
         self.assertEqual(load_playbook('not_a_topology')['topology'], '_default')
 
-    def test_resonant_falls_back_to_default(self) -> None:
-        # No playbook for the resonant family yet.
-        self.assertEqual(load_playbook('llc_resonant')['topology'], '_default')
+    def test_resonant_resolves_exact(self) -> None:
+        self.assertEqual(load_playbook('llc_resonant')['topology'], 'llc_resonant')
 
 
 class BuckPathologyMatchingTests(unittest.TestCase):

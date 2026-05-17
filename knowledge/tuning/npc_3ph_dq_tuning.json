@@ -1,0 +1,24 @@
+{
+  "title": "NPC Three-Level DQ Tuning Rules",
+  "topic": "tuning",
+  "topology": "inverter_3ph_npc",
+  "architecture": "dq",
+  "tags": ["npc", "three_level", "dq", "grid_tied", "tuning"],
+  "source_type": "tuning_rule",
+  "source_refs": ["teodorescu_grid_converters_2011"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Current loop",
+      "text": "Dq-frame PI current controller. Crossover: f_ci ~ fsw/10. Include dq decoupling: Vd_ff = -omega*L*Iq, Vq_ff = omega*L*Id. For LCL filter, add active damping via capacitor-current feedback gain R_d ~ 1/(3*Cf*omega_res)."
+    },
+    {
+      "heading": "Voltage loop",
+      "text": "DC-bus voltage PI controller. Crossover: f_cv ~ f_ci/10 ~ fsw/100. The voltage loop output sets the d-axis current reference. Anti-windup is critical because the current reference saturates."
+    },
+    {
+      "heading": "Neutral-point balancing loop",
+      "text": "Separate slow loop that adjusts zero-vector dwell time. Bandwidth ~ f_ci/10. If balancing oscillates, reduce the gain. If it cannot converge, the DC-bus capacitors may be too small or the load is too unbalanced."
+    }
+  ]
+}

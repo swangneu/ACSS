@@ -1,0 +1,56 @@
+{
+  "title": "Three-Phase Inverter Revision Patterns",
+  "topic": "revision",
+  "topology": "inverter_3ph",
+  "power_stage_family": "dc_ac_inverter",
+  "tags": ["inverter_3ph", "revision", "weak_grid", "grid_forming", "grid_following", "lcl"],
+  "source_type": "revision_rule",
+  "source_refs": ["teodorescu_grid_converters_2011", "benchmarking_nonlinear_oscillators_grid_forming"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Overshoot in weak grid",
+      "revision_trigger": "overshoot",
+      "operating_mode": "weak_grid",
+      "text": "Voltage overshoot under weak-grid conditions on a grid-forming inverter is usually a coupling problem between the inverter output impedance and the grid impedance, not a gain issue. Lowering controller gains often makes the inverter unstable instead. Prefer adding virtual impedance or active damping, or switching to a grid-forming architecture (VOC, VSG) if grid-following dq is the current choice."
+    },
+    {
+      "heading": "Overshoot on phase jump",
+      "revision_trigger": "overshoot",
+      "text": "Overshoot during a phase or frequency jump on a 3-phase inverter is a PLL/synchronization issue. Verify the PLL bandwidth is below the voltage-loop bandwidth by at least 3x. For grid-forming designs, ensure the oscillator angle is the reference of record and is not being snapped to a measured grid angle during the transient."
+    },
+    {
+      "heading": "Slow settling after disturbance",
+      "revision_trigger": "slow_settling",
+      "text": "Slow settling on a 3-phase inverter usually traces to the LCL filter's lightly damped resonance, not the controller gains. Add active damping (capacitor-current feedback or virtual resistor) before tightening loop bandwidth. If active damping is present, verify the damping coefficient is matched to the LCL resonant frequency and the sampling rate."
+    },
+    {
+      "heading": "Slow settling in dq frame",
+      "revision_trigger": "slow_settling",
+      "architecture": "dq",
+      "text": "If a dq-frame inverter settles slowly on a current reference step, check feedforward decoupling between d and q axes. Without ωL cross-decoupling, the two loops fight each other and effective settling time degrades. Adding decoupling is far more effective than raising loop gain."
+    },
+    {
+      "heading": "Excess ripple at switching frequency",
+      "revision_trigger": "excess_ripple",
+      "text": "Ripple at switching frequency on a 3-phase inverter output is set by the LCL filter and modulation strategy, not the controller. Verify L1, L2, Cf design against the switching frequency and check whether the modulation (SVPWM vs SPWM) is generating expected harmonic content. Controller action: ensure the sample time avoids aliasing the switching ripple into the regulated band."
+    },
+    {
+      "heading": "Excess sub-synchronous oscillation",
+      "revision_trigger": "excess_ripple",
+      "operating_mode": "weak_grid",
+      "text": "Sub-synchronous oscillation (below grid fundamental) in weak-grid operation is an unstable interaction between PLL and current loop, frequently misclassified as ripple. The fix is to reduce PLL bandwidth substantially or, if grid-forming, drop the PLL entirely and rely on the internal oscillator."
+    },
+    {
+      "heading": "Efficiency shortfall",
+      "revision_trigger": "efficiency_shortfall",
+      "text": "Inverter efficiency is dominated by switching losses at high fsw and conduction losses at high current. From the controller side, the only meaningful lever is reducing the modulation index requirement (so deadtime and switching events drop) — this usually means accepting larger LCL filter components. Loop tuning does not recover inverter efficiency."
+    },
+    {
+      "heading": "Repeated failure on grid-following",
+      "revision_trigger": "failed_revision",
+      "architecture": "dq",
+      "text": "If a grid-following dq design fails across multiple revision iterations under weak-grid conditions, the architecture is the wrong choice — grid-following loses stability margin as the grid SCR drops. Escalate to a grid-forming architecture (VOC, VSG) rather than continuing to retune the dq loops."
+    }
+  ]
+}

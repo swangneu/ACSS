@@ -1,0 +1,37 @@
+{
+  "title": "Phase-Shifted Full-Bridge Revision Patterns",
+  "topic": "revision",
+  "topology": "psfb",
+  "power_stage_family": "dc_dc_isolated",
+  "tags": ["psfb", "revision", "zvs", "duty_cycle_loss"],
+  "source_type": "revision_rule",
+  "source_refs": ["erickson_maksimovic_2001"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Overshoot from duty-cycle loss",
+      "revision_trigger": "overshoot",
+      "text": "PSFB has inherent duty-cycle loss due to the leakage inductance commutation time. This reduces the effective duty cycle and requires a higher turns ratio. If overshoot occurs, verify the turns ratio accounts for duty-cycle loss. The voltage loop should be designed for the effective duty cycle, not the nominal."
+    },
+    {
+      "heading": "Slow settling from ZVS loss",
+      "revision_trigger": "slow_settling",
+      "text": "If the PSFB loses ZVS (audible ringing on the primary), the switching losses increase and the effective gain changes. At light load, ZVS is lost — consider adaptive dead-time or burst mode. The current loop must handle the gain change from ZVS to hard-switching."
+    },
+    {
+      "heading": "Excess ripple from secondary ringing",
+      "revision_trigger": "excess_ripple",
+      "text": "The secondary rectifier ringing (from leakage inductance + junction capacitance) can couple to the output. Add RC snubbers across the secondary rectifiers. The output LC filter should be sized for the effective ripple frequency (2*fsw)."
+    },
+    {
+      "heading": "Efficiency from circulating current",
+      "revision_trigger": "efficiency_shortfall",
+      "text": "PSFB efficiency at light load suffers from circulating current in the primary leg during the freewheeling interval. The controller cannot fix this — it is a topology limitation. Consider burst mode or a different topology for high efficiency across the full load range."
+    },
+    {
+      "heading": "Architecture limit",
+      "revision_trigger": "failed_revision",
+      "text": "If the PSFB cannot meet specs across the full load range, consider: (1) LLC for fixed conversion ratio with wide ZVS, (2) full-bridge with active clamp for better ZVS, (3) DAB for bidirectional power flow."
+    }
+  ]
+}

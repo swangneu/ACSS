@@ -1,0 +1,48 @@
+{
+  "topology": "pfc",
+  "applies_to_families": ["ac_dc_rectifier"],
+  "description": "PFC converter. Watch current distortion, voltage-loop instability at 2*f_line, and inrush current.",
+  "key_signals": ["vin_ac_v", "iin_ac_a", "vout_dc_v"],
+  "metrics": [
+    {"id": "tail_pp_to_mean_ratio", "extractor": "ratio", "args": {"numerator": "tail_pp_v", "denominator": "tail_abs_mean_v"}},
+    {"id": "first_peak_to_tail_ratio", "extractor": "first_peak_to_tail_ratio"},
+    {"id": "dominant_osc_hz", "extractor": "dominant_osc_hz", "args": {"signal": "vout_dc_v"}},
+    {"id": "zero_crossings_in_tail", "extractor": "zero_crossings_in_tail"}
+  ],
+  "pathologies": [
+    {
+      "id": "voltage_loop_instability",
+      "when": {"all": [
+        {"metric": "dominant_osc_hz", "op": ">", "value": 80},
+        {"metric": "dominant_osc_hz", "op": "<", "value": 200},
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.1}
+      ]},
+      "implies": "tuning",
+      "explanation": "Output oscillates near 2*f_line — voltage-loop bandwidth is too high and injecting ripple into the current reference. Reduce voltage-loop bandwidth below 2*f_line."
+    },
+    {
+      "id": "inrush_current",
+      "when": {"all": [
+        {"metric": "first_peak_to_tail_ratio", "op": ">", "value": 3.0},
+        {"metric": "zero_crossings_in_tail", "op": "<=", "value": 2}
+      ]},
+      "implies": "implementation",
+      "explanation": "Large initial spike — inrush current at startup. The bulk capacitor charges through the boost inductor with no current limit. Add pre-charge resistor or soft-start ramp."
+    },
+    {
+      "id": "current_distortion",
+      "when": {"all": [
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.05},
+        {"metric": "zero_crossings_in_tail", "op": ">=", "value": 6}
+      ]},
+      "implies": "tuning",
+      "explanation": "Output has high ripple at line harmonics — current-loop bandwidth too low causing THD. Increase current-loop bandwidth."
+    },
+    {
+      "id": "no_response",
+      "when": {"metric": "tail_abs_mean_v", "op": "<", "value": "abs_target * 0.1"},
+      "implies": "implementation",
+      "explanation": "Output never approaches target — implementation error (current reference not generated, or voltage sensor polarity wrong)."
+    }
+  ]
+}

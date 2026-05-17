@@ -1,0 +1,30 @@
+{
+  "title": "Flyback Current-Mode Tuning Rules",
+  "topic": "tuning",
+  "topology": "flyback",
+  "architecture": "current_mode",
+  "power_stage_family": "dc_dc_isolated",
+  "control_objective": "voltage_regulation",
+  "tags": ["flyback", "isolation", "current_loop", "slope_compensation", "rhpz"],
+  "source_type": "tuning_rule",
+  "source_refs": ["erickson_maksimovic_2001", "ti_current_mode_control_handbook"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Slope compensation",
+      "text": "Peak current-mode flyback operating above 50% duty in CCM is subharmonically unstable without slope compensation. Add an artificial ramp with slope at least half of the inductor down-slope reflected to the primary. Insufficient slope compensation appears as period-doubling on the current waveform, which evaluators may misread as a tuning problem."
+    },
+    {
+      "heading": "Voltage-loop bandwidth",
+      "text": "Place the outer voltage-loop crossover at approximately fsw/10 to fsw/5 in DCM. In CCM, the right-half-plane zero — frequency proportional to load and (1 - D)^2 — typically caps voltage-loop crossover at one quarter of the RHPZ frequency."
+    },
+    {
+      "heading": "Leakage and snubber interaction",
+      "text": "Primary leakage inductance produces a voltage spike that is sensed alongside the legitimate switch current. If the controller acts on the spike, the duty-cycle command oscillates. Apply leading-edge blanking on the current sense long enough to clear the leakage transient before the loop sees it."
+    },
+    {
+      "heading": "Mode transition",
+      "text": "DCM-to-CCM transition changes the small-signal model from a single-pole system to a double-pole-plus-RHPZ system. Pick the operating-point worst case (typically heavy load in CCM) for stability margin verification, and accept that DCM small-signal margin will be much larger."
+    }
+  ]
+}

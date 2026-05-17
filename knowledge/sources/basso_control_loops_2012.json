@@ -1,0 +1,27 @@
+{
+  "title": "Basso Designing Control Loops Source Metadata",
+  "topic": "source_notes",
+  "source_type": "paper_source",
+  "source_id": "basso_2012",
+  "authors": ["Christophe P. Basso"],
+  "year": 2012,
+  "venue": "Textbook (Artech House)",
+  "sections": [
+    {
+      "heading": "Practical compensator design",
+      "claim_id": "compensator_design_practical",
+      "claim_type": "design_rule",
+      "text": "Practical compensator design for switching converters should start from measured or simulated Bode plots of the plant, not from idealized transfer functions. This is especially critical for converters with RHPZ or variable plant behavior across operating conditions.",
+      "source_refs": ["basso_2012"],
+      "evidence_strength": "high"
+    },
+    {
+      "heading": "Type II and Type III compensators",
+      "claim_id": "compensator_types",
+      "claim_type": "design_rule",
+      "text": "Use Type II (PI with lead) for converters with ESR zero cancellation needs. Use Type III (PID with two zeros) for converters requiring high bandwidth with double-pole plants like LC filters. Place zeros at or below the LC resonant frequency.",
+      "source_refs": ["basso_2012"],
+      "evidence_strength": "high"
+    }
+  ]
+}

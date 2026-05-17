@@ -1,0 +1,36 @@
+{
+  "title": "Three-Level NPC Inverter Strategy",
+  "topic": "strategy",
+  "topology": "inverter_3ph_npc",
+  "architecture": "dq",
+  "power_stage_family": "dc_ac_inverter",
+  "control_objective": "grid_following",
+  "operating_mode": "grid_connected",
+  "plant_features": ["neutral_point_balance", "three_level", "lc_filter"],
+  "tags": ["npc", "three_level", "dq", "grid_tied", "neutral_point"],
+  "source_type": "controller_pattern",
+  "source_refs": ["teodorescu_grid_converters_2011", "yazdani_iravani_2010"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Default structure",
+      "text": "NPC (Neutral-Point Clamped) is a three-level inverter with four switches per leg. The dq-frame current controller decouples the d and q axes. An outer voltage loop regulates the DC bus. The neutral-point voltage must be actively balanced."
+    },
+    {
+      "heading": "Neutral-point balancing",
+      "text": "The split DC-bus capacitors develop a voltage imbalance due to asymmetric switching. A balancing algorithm adjusts the dwell time of the inner voltage level (zero vector) to equalize the capacitor voltages. The balancing loop bandwidth should be ~1/10 of the current loop."
+    },
+    {
+      "heading": "Design formulas",
+      "text": "Output voltage levels: +V_dc/2, 0, -V_dc/2. Line-to-line voltage has 5 levels. THD is lower than two-level for the same switching frequency. Current-loop crossover: fsw/10. Voltage-loop crossover: fsw/50 to fsw/100. LCL filter resonance: f_res between 10*f_grid and fsw/2."
+    },
+    {
+      "heading": "Constraint",
+      "text": "NPC requires careful dead-time management to avoid shoot-through and ensure proper zero-level clamping. The inner switches (S2, S3) have different switching loss profiles than the outer switches (S1, S4). Neutral-point balancing fails if the current unbalance exceeds the capacitor sizing margin."
+    },
+    {
+      "heading": "Escalation trigger",
+      "text": "If neutral-point balancing oscillates, reduce the balancing loop gain or increase the DC bus capacitor size. If THD fails spec, check LCL filter resonance placement and active damping. For higher voltage (>1kV), consider T-type or cascaded H-bridge."
+    }
+  ]
+}

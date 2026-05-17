@@ -1,0 +1,37 @@
+{
+  "title": "Totem-Pole PFC Revision Patterns",
+  "topic": "revision",
+  "topology": "pfc_totem_pole",
+  "power_stage_family": "ac_dc_rectifier",
+  "tags": ["pfc", "totem_pole", "revision", "zvs", "current_distortion"],
+  "source_type": "revision_rule",
+  "source_refs": ["ti_current_mode_control_handbook"],
+  "confidence": "medium",
+  "sections": [
+    {
+      "heading": "Current distortion near zero crossing",
+      "revision_trigger": "excess_ripple",
+      "text": "Totem-pole PFC current distortion near the AC zero crossing is caused by: (1) dead-time between the fast-path and slow-path switches, (2) inductor current discontinuity in CRM/DCM, (3) insufficient current-loop bandwidth. Increase current-loop crossover or use interleaved modulation."
+    },
+    {
+      "heading": "120Hz output ripple",
+      "revision_trigger": "excess_ripple",
+      "text": "The PFC output has inherent 2*f_line ripple from the power pulsation. The voltage-loop bandwidth MUST be below 2*f_line (~120Hz for 60Hz, ~100Hz for 50Hz) to avoid current distortion. If the ripple is excessive, increase the output capacitance — do not raise the voltage-loop bandwidth."
+    },
+    {
+      "heading": "Overshoot from voltage loop",
+      "revision_trigger": "overshoot",
+      "text": "PFC voltage-loop overshoot: the bandwidth is already very low (<20Hz typical). If overshoot occurs, the kp is too high for the slow plant. Reduce kp and increase ki for steady-state accuracy without overshoot."
+    },
+    {
+      "heading": "ZVS loss at light load",
+      "revision_trigger": "efficiency_shortfall",
+      "text": "Totem-pole PFC with GaN/SiC loses ZVS at light load because the inductor current is discontinuous. This is a topology limitation. Consider: (1) CRM operation with variable frequency, (2) adaptive dead-time, (3) burst mode at light load."
+    },
+    {
+      "heading": "Architecture limit",
+      "revision_trigger": "failed_revision",
+      "text": "If the totem-pole PFC cannot meet THD or efficiency specs, consider: (1) interleaved PFC for lower current ripple, (2) Vienna rectifier for three-phase applications, (3) conventional boost PFC with bridge rectifier if GaN/SiC is not available."
+    }
+  ]
+}

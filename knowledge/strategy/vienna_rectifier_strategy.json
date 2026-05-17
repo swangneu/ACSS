@@ -1,0 +1,34 @@
+{
+  "title": "Vienna Rectifier Strategy",
+  "topic": "strategy",
+  "topology": "vienna",
+  "architecture": "pfc_current_mode",
+  "power_stage_family": "ac_dc_rectifier",
+  "control_objective": "power_factor_correction",
+  "operating_mode": "standalone",
+  "plant_features": ["line_frequency_envelope", "three_phase"],
+  "tags": ["vienna", "three_phase", "pfc", "neutral_point"],
+  "source_type": "controller_pattern",
+  "source_refs": ["kolar_vienna"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "When to use",
+      "text": "Use Vienna rectifier for three-phase unidirectional PFC. Only three active switches (vs six in conventional bridge), inherent three-level modulation reduces input current THD, no shoot-through risk. THD < 5% achievable with proper current-loop bandwidth."
+    },
+    {
+      "heading": "Controller structure",
+      "text": "Control in dq frame with inner current loop and outer voltage loop. Neutral-point voltage balance is an additional control loop that adjusts the common-mode duty-cycle offset. The voltage loop bandwidth must stay below 2*f_line (typically 10-20 Hz)."
+    },
+    {
+      "heading": "Constraint",
+      "topic": "constraints",
+      "text": "Unidirectional power flow only (boost mode). Neutral-point voltage balancing is required — if the split capacitors have unequal voltage, the output current waveform distorts. The neutral-point balancing loop should be 5-10x faster than the voltage loop."
+    },
+    {
+      "heading": "Escalation trigger",
+      "revision_trigger": "excess_ripple",
+      "text": "If THD is high, increase current-loop bandwidth. If the neutral-point voltage oscillates, increase the balancing loop gain. If the output voltage oscillates at 6*f_line, reduce the voltage-loop bandwidth below 2*f_line."
+    }
+  ]
+}

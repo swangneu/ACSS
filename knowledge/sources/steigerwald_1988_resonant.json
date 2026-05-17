@@ -1,0 +1,27 @@
+{
+  "title": "Steigerwald Resonant Converter Design Source Metadata",
+  "topic": "source_notes",
+  "source_type": "paper_source",
+  "source_id": "steigerwald_1988",
+  "authors": ["Robert L. Steigerwald"],
+  "year": 1988,
+  "venue": "IEEE Transactions on Industrial Electronics",
+  "sections": [
+    {
+      "heading": "LLC gain design",
+      "claim_id": "llc_gain_design",
+      "claim_type": "design_rule",
+      "text": "LLC resonant converter gain is controlled by switching frequency relative to the tank resonant frequency. Maximum gain occurs near the series resonant frequency. Operating above resonance achieves ZVS for primary switches. The gain curve is nonlinear and load-dependent.",
+      "source_refs": ["steigerwald_1988"],
+      "evidence_strength": "high"
+    },
+    {
+      "heading": "Resonant topology comparison",
+      "claim_id": "resonant_topology_comparison",
+      "claim_type": "design_rule",
+      "text": "Series resonant (SRC): gain <= 1, load-dependent, narrow control range. Parallel resonant (PRC): wider control range but high circulating current at light load. LLC combines both: wide control range with ZVS capability across load.",
+      "source_refs": ["steigerwald_1988"],
+      "evidence_strength": "high"
+    }
+  ]
+}

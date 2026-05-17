@@ -1,0 +1,33 @@
+{
+  "title": "Forward Converter Cascaded Control Tuning",
+  "topic": "tuning",
+  "topology": "forward",
+  "architecture": "cascaded",
+  "power_stage_family": "dc_dc_isolated",
+  "tags": ["forward", "isolated", "cascaded", "tuning"],
+  "source_type": "tuning_rule",
+  "source_refs": ["erickson_maksimovic_2001", "kazimierczuk_2008"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "Bandwidth ordering",
+      "text": "Inner current loop crossover: f_ci ~ fsw/10. Outer voltage loop crossover: f_cv ~ f_ci/5 to f_ci/3. This ensures the current loop settles before the voltage loop acts. The current loop handles the fast inductor dynamics."
+    },
+    {
+      "heading": "Gain direction",
+      "text": "For the current loop: increase kp until the current tracks the reference within one switching cycle, then add ki for zero steady-state error. For the voltage loop: increase kp for faster transient response, increase ki for lower steady-state voltage error."
+    },
+    {
+      "heading": "Slope compensation",
+      "text": "If D > 0.5 at any operating point, add slope compensation with ramp slope >= inductor downslope / 2. Without it, subharmonic instability occurs near fsw/2. The ramp is added to the current sense signal."
+    },
+    {
+      "heading": "Sample time",
+      "text": "Current loop sample time: <= 1/(10*fsw). Voltage loop sample time: can be slower, <= 1/(5*fsw). The current loop needs faster sampling to catch the peak current accurately."
+    },
+    {
+      "heading": "Operating-point sensitivity",
+      "text": "The plant gain varies with input voltage (D changes with Vin). At maximum Vin, D is smallest and the plant gain is lowest. Verify current-loop stability at both Vin_min and Vin_max."
+    }
+  ]
+}

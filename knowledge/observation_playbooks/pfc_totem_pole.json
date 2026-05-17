@@ -1,0 +1,39 @@
+{
+  "topology": "pfc_totem_pole",
+  "applies_to_families": ["ac_dc_rectifier"],
+  "description": "Totem-pole PFC. Watch current distortion, 100/120Hz ripple, and ZVS loss at light load.",
+  "key_signals": ["vout_v", "i_in_a", "v_ac_v"],
+  "metrics": [
+    {"id": "tail_pp_to_mean_ratio", "extractor": "ratio", "args": {"numerator": "tail_pp_v", "denominator": "tail_abs_mean_v"}},
+    {"id": "dominant_osc_hz", "extractor": "dominant_osc_hz", "args": {"signal": "vout_v"}},
+    {"id": "zero_crossings_in_tail", "extractor": "zero_crossings_in_tail"}
+  ],
+  "pathologies": [
+    {
+      "id": "line_frequency_ripple",
+      "when": {"all": [
+        {"metric": "dominant_osc_hz", "op": ">", "value": 80},
+        {"metric": "dominant_osc_hz", "op": "<", "value": 140},
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.05}
+      ]},
+      "implies": "tuning_or_architecture",
+      "explanation": "100/120Hz ripple on the output — inherent power pulsation. The voltage-loop bandwidth must be below 2*f_line. If ripple is too large, increase output capacitance."
+    },
+    {
+      "id": "current_distortion",
+      "when": {"all": [
+        {"metric": "dominant_osc_hz", "op": ">", "value": 0},
+        {"metric": "dominant_osc_hz", "op": "<", "value": 80},
+        {"metric": "tail_pp_to_mean_ratio", "op": ">", "value": 0.1}
+      ]},
+      "implies": "tuning",
+      "explanation": "Sub-line-frequency oscillation — current-loop instability or incorrect zero-crossing modulation."
+    },
+    {
+      "id": "no_response",
+      "when": {"metric": "tail_abs_mean_v", "op": "<", "value": "abs_target * 0.1"},
+      "implies": "implementation",
+      "explanation": "Output dead — check AC input, gate drive, and current sensing."
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "title": "Kazimierczuk PWM DC-DC Power Converters Source Metadata",
+  "topic": "source_notes",
+  "source_type": "paper_source",
+  "source_id": "kazimierczuk_2008",
+  "authors": ["Marian K. Kazimierczuk"],
+  "year": 2008,
+  "venue": "Textbook (Wiley)",
+  "sections": [
+    {
+      "heading": "Current-mode control modeling",
+      "claim_id": "current_mode_small_signal",
+      "claim_type": "design_rule",
+      "text": "Current-mode control transforms the plant from second-order to first-order by making the inductor current follow the control signal. Subharmonic instability above 50% duty cycle requires slope compensation with ramp slope >= inductor downslope / 2.",
+      "source_refs": ["kazimierczuk_2008"],
+      "evidence_strength": "high"
+    },
+    {
+      "heading": "CCM-DCM unified models",
+      "claim_id": "ccm_dcm_boundary",
+      "claim_type": "design_rule",
+      "text": "The CCM/DCM boundary occurs at a load current that depends on the inductor value, duty cycle, and switching frequency. Below the boundary, the plant transfer function changes from second-order to first-order, requiring different compensator design.",
+      "source_refs": ["kazimierczuk_2008"],
+      "evidence_strength": "high"
+    }
+  ]
+}

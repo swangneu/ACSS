@@ -1,0 +1,37 @@
+{
+  "title": "Boost Converter Revision Patterns",
+  "topic": "revision",
+  "topology": "boost",
+  "power_stage_family": "dc_dc_nonisolated",
+  "tags": ["boost", "revision", "rhpz", "current_loop"],
+  "source_type": "revision_rule",
+  "source_refs": ["erickson_maksimovic_2001"],
+  "confidence": "high",
+  "sections": [
+    {
+      "heading": "Overshoot with RHPZ undershoot",
+      "revision_trigger": "overshoot",
+      "text": "Boost overshoot under load step shows a characteristic initial dip (non-minimum-phase undershoot) before the output recovers. This is caused by the RHPZ. Fix: reduce voltage-loop crossover below RHPZ/4, increase inner current-loop bandwidth, or add input voltage feedforward."
+    },
+    {
+      "heading": "Slow settling from RHPZ limit",
+      "revision_trigger": "slow_settling",
+      "text": "Slow settling on a boost usually means the voltage-loop bandwidth is below the RHPZ limit but gains are still too conservative. Check if the RHPZ frequency is lower than expected — this happens at light load (high R_load) or near-maximum duty cycle. Consider load-current feedforward."
+    },
+    {
+      "heading": "Excess ripple from capacitor sizing",
+      "revision_trigger": "excess_ripple",
+      "text": "Boost output ripple is dominated by the capacitor ESR and the charging/discharging current during switch on-time. At high duty cycle, the diode conducts for a short fraction of the period, so the capacitor must supply the load for most of the cycle. Verify C and ESR before changing gains."
+    },
+    {
+      "heading": "Efficiency from conduction losses",
+      "revision_trigger": "efficiency_shortfall",
+      "text": "Boost efficiency is primarily a function of conduction losses (which increase with duty cycle) and diode forward voltage. From the control side: verify the operating point is not in deep DCM at light load. Consider synchronous rectification or interleaving."
+    },
+    {
+      "heading": "RHPZ architecture limit",
+      "revision_trigger": "failed_revision",
+      "text": "If boost fails across multiple iterations with current-mode control and the RHPZ frequency is below the required bandwidth, the topology cannot meet the transient spec. Consider interleaved boost (reduces effective RHPZ), buck-boost, or a different topology family."
+    }
+  ]
+}
