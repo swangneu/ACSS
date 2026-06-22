@@ -4,6 +4,7 @@ from typing import Any
 
 from src.llm import DeepSeekClient
 from src.workflow.contracts import (
+    FeedbackControlState,
     FailureDiagnosisReport,
     HypothesisState,
     NextAction,
@@ -23,6 +24,7 @@ class HypothesisManager:
         diagnosis: FailureDiagnosisReport,
         previous_state: HypothesisState | None,
         sensitivity: dict[str, Any] | None = None,
+        feedback: FeedbackControlState | None = None,
     ) -> tuple[HypothesisState, NextStepDecision]:
         if not self.client.enabled:
             raise RuntimeError('DeepSeek API key is required for HypothesisManager in LLM-only mode.')
@@ -30,6 +32,7 @@ class HypothesisManager:
         prev_history = list(previous_state.history) if previous_state is not None else []
         stagnant, arch_switches = _compute_stagnation(prev_history)
         responsiveness = (sensitivity or {}).get('responsiveness', 'unknown')
+        feedback_bias = _feedback_primary_action_bias(feedback)
 
         # Hard escalation: stop wasting iterations when stuck.
         if stagnant >= 3 and arch_switches >= 2:
@@ -64,6 +67,13 @@ class HypothesisManager:
                 ),
                 stop_run=False,
             )
+        if feedback_bias == NextAction.SWITCH_CONTROLLER_ARCHITECTURE.value and stagnant >= 1:
+            return _forced_decision(
+                analysis, diagnosis, prev_history, stagnant, arch_switches,
+                action=NextAction.SWITCH_CONTROLLER_ARCHITECTURE,
+                rationale='Feedback control state shows recurring accumulated failure; switching architecture instead of repeating gain-only tuning.',
+                stop_run=False,
+            )
 
         data = self.client.complete_json(
             (
@@ -73,6 +83,7 @@ class HypothesisManager:
                 'switch_controller_architecture, request_model_plant_inspection. '
                 f'Stagnation metrics: stagnant_iterations={stagnant}, architecture_switches={arch_switches}. '
                 f'Sensitivity probe: responsiveness={responsiveness}. '
+                f'Feedback control state:\n{feedback.prompt_summary if feedback is not None else "none"}\n'
                 'DECISION RULES:\n'
                 '- If stagnant_iterations >= 2, prefer switch_controller_architecture over retune_parameters.\n'
                 '- If stagnant_iterations >= 3, strongly prefer switch_controller_architecture or request_model_plant_inspection.\n'
@@ -80,6 +91,8 @@ class HypothesisManager:
                 '- If responsiveness == "monotonic_wrong", the issue is sign/polarity — use patch_implementation, not retune.\n'
                 '- If responsiveness == "none", gains are not working — use switch_controller_architecture.\n'
                 '- If the diagnosis is architecture_limit, use switch_controller_architecture.\n'
+                '- Treat feedback_control_state.controller_guidance.primary_action_bias as a prior; '
+                'override it only when concrete analysis or diagnosis evidence contradicts it.\n'
                 '- retune_parameters should only be chosen when the metric is still moving with gain changes '
                 'and the architecture has not been tried 2+ times.'
             ),
@@ -121,6 +134,7 @@ class HypothesisManager:
                 'action': decision.action.value,
                 'confidence': diagnosis.confidence,
                 'score_delta': float(score_delta),
+                'feedback_action_bias': feedback_bias,
             }
         )
         return state, decision
@@ -145,6 +159,13 @@ def _compute_stagnation(history: list[dict]) -> tuple[int, int]:
         if entry.get('action') == NextAction.SWITCH_CONTROLLER_ARCHITECTURE.value
     )
     return stagnant, arch_switches
+
+
+def _feedback_primary_action_bias(feedback: FeedbackControlState | None) -> str:
+    if feedback is None:
+        return ''
+    guidance = feedback.controller_guidance if isinstance(feedback.controller_guidance, dict) else {}
+    return str(guidance.get('primary_action_bias', ''))
 
 
 def _forced_decision(

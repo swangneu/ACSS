@@ -15,6 +15,7 @@ _log = logging.getLogger(__name__)
 from src.agents.control_agent import ControlAgent
 from src.agents.control_strategy_agent import ControlStrategyAgent
 from src.agents.evaluation_agent import EvaluationAgent
+from src.agents.llm_log import IterationLLMLog
 from src.agents.model_builder_agent import ModelBuilderAgent
 from src.agents.sensor_agent import SensorAgent
 from src.agents.simulation_agent import SimulationAgent
@@ -32,8 +33,9 @@ from src.workflow import (
     HypothesisManager,
     ResponseAnalyzer,
     SimulationExecutor,
+    build_feedback_control_state,
 )
-from src.workflow.contracts import HypothesisState, NextAction, to_json_dict
+from src.workflow.contracts import FeedbackControlState, HypothesisState, NextAction, to_json_dict
 from src.workflow.pathology_classifier import PathologyClassifier
 from src.workflow.sensitivity_probe import TrajectoryProbe, empty_sensitivity
 
@@ -143,6 +145,7 @@ class ACSSOrchestrator:
         for i in range(req.max_iterations):
             iter_dir = run_dir / f'iter_{i:02d}'
             iter_dir.mkdir(parents=True, exist_ok=True)
+            llm_log = IterationLLMLog()
 
             progress.step('sensors', i, req.max_iterations, 'Selecting sensor set')
             sensors = self.sensor_agent.design(req, topology)
@@ -150,11 +153,11 @@ class ACSSOrchestrator:
             sensors = self._review_step(iter_dir, 'sensors', sensors)
             previous_eval = records[-1].evaluation if records else None
             progress.step('strategy', i, req.max_iterations, 'Choosing control strategy')
-            strategy = self.control_strategy_agent.choose(req, topology, i, previous_eval, intent=intent)
+            strategy = self.control_strategy_agent.choose(req, topology, i, previous_eval, intent=intent, llm_log=llm_log)
             progress.done('strategy', architecture=str(strategy.get('architecture', '')))
             strategy = self._review_step(iter_dir, 'control_strategy', strategy)
             progress.step('control', i, req.max_iterations, 'Synthesizing control parameters')
-            control = self.control_agent.design(req, topology, iteration=i, strategy=strategy, intent=intent)
+            control = self.control_agent.design(req, topology, iteration=i, strategy=strategy, intent=intent, llm_log=llm_log)
             progress.done('control', kp=f'{control.kp:.4g}', ki=f'{control.ki:.4g}')
             control = self._review_step(iter_dir, 'control', control)
             progress.step('payload', i, req.max_iterations, 'Building simulation payload')
@@ -205,6 +208,7 @@ class ACSSOrchestrator:
                 'engineer_review': asdict(engineer_review) if engineer_review else None,
                 'iteration_accepted': final_pass,
             })
+            dump_json(iter_dir / 'llm_log.json', llm_log.to_json())
 
             if final_pass:
                 progress.finish_iteration(i, accepted=True)
@@ -214,10 +218,11 @@ class ACSSOrchestrator:
                 break
             progress.step('revision', i, req.max_iterations, 'Revising topology/control for next iteration')
             waveform_report = self._load_waveform_report(iter_dir)
-            topology, control = self.revising_agent.revise(req, topology, control, eval_result, engineer_review, i, waveform_report=waveform_report)
+            topology, control = self.revising_agent.revise(req, topology, control, eval_result, engineer_review, i, waveform_report=waveform_report, llm_log=llm_log)
             progress.done('revision', next_topology=topology.topology, next_arch=control.architecture)
             topology = self._review_step(iter_dir, 'revised_topology', topology)
             control = self._review_step(iter_dir, 'revised_control', control)
+            dump_json(iter_dir / 'llm_log.json', llm_log.to_json())
 
         final_artifact_files: list[str] = []
         final_validation_mode = 'none'
@@ -270,6 +275,8 @@ class ACSSOrchestrator:
         hypothesis_state: HypothesisState | None = None
         stop_reason: str | None = None
         forced_strategy: dict[str, object] | None = None
+        feedback_state: FeedbackControlState | None = None
+        seed_control = None
 
         progress.step('topology', 0, req.max_iterations, 'Selecting topology and initial passives')
         topology = self.topology_agent.design(req, intent=intent)
@@ -279,6 +286,7 @@ class ACSSOrchestrator:
         for i in range(req.max_iterations):
             iter_dir = run_dir / f'iter_{i:02d}'
             iter_dir.mkdir(parents=True, exist_ok=True)
+            llm_log = IterationLLMLog()
             previous_eval = records[-1].evaluation if records else None
 
             progress.step('generation', i, req.max_iterations, 'Generating strategy/control/payload')
@@ -290,8 +298,12 @@ class ACSSOrchestrator:
                 previous_evaluation=previous_eval,
                 strategy_override=forced_strategy,
                 intent=intent,
+                feedback=feedback_state,
+                seed_control=seed_control,
+                llm_log=llm_log,
             )
             forced_strategy = None
+            seed_control = None
             sensors = self._review_step(iter_dir, 'sensors', sensors)
             strategy = self._review_step(iter_dir, 'control_strategy', strategy)
             control = self._review_step(iter_dir, 'control', control)
@@ -339,22 +351,33 @@ class ACSSOrchestrator:
                     topology=topology.topology,
                 ).to_dict()
                 sensitivity = self.sensitivity_probe.evaluate(analysis).to_dict()
+            current_feedback = build_feedback_control_state(
+                req=req,
+                analysis=analysis,
+                history=analysis_history,
+                hypothesis_state=hypothesis_state,
+                sensitivity=sensitivity,
+            )
             diagnosis = self.failure_diagnoser.diagnose(
                 analysis,
                 analysis_history,
                 intent=intent,
                 pathology_label=pathology_label,
                 sensitivity=sensitivity,
+                feedback=current_feedback,
             )
             hypothesis_state, decision = self.hypothesis_manager.decide(
                 analysis=analysis,
                 diagnosis=diagnosis,
                 previous_state=hypothesis_state,
                 sensitivity=sensitivity,
+                feedback=current_feedback,
             )
             analysis_history.append(analysis)
+            feedback_state = current_feedback
 
             dump_json(iter_dir / 'analysis_report.json', to_json_dict(analysis))
+            dump_json(iter_dir / 'feedback_report.json', to_json_dict(current_feedback))
             diagnosis_dict = to_json_dict(diagnosis)
             if pathology_label is not None:
                 diagnosis_dict['pathology_label'] = pathology_label
@@ -392,6 +415,7 @@ class ACSSOrchestrator:
                 {
                     'iteration': i,
                     'analysis': to_json_dict(analysis),
+                    'feedback': to_json_dict(current_feedback),
                     'diagnosis': to_json_dict(diagnosis),
                     'decision': to_json_dict(decision),
                     'hypothesis': to_json_dict(hypothesis_state),
@@ -410,12 +434,14 @@ class ACSSOrchestrator:
                     'evaluation': asdict(eval_result),
                     'engineer_review': asdict(engineer_review) if engineer_review else None,
                     'analysis': to_json_dict(analysis),
+                    'feedback': to_json_dict(current_feedback),
                     'diagnosis': to_json_dict(diagnosis),
                     'decision': to_json_dict(decision),
                     'hypothesis': to_json_dict(hypothesis_state),
                     'iteration_accepted': final_pass,
                 },
             )
+            dump_json(iter_dir / 'llm_log.json', llm_log.to_json())
 
             if final_pass:
                 progress.finish_iteration(i, accepted=True)
@@ -430,9 +456,10 @@ class ACSSOrchestrator:
             progress.step('revision', i, req.max_iterations, f'Applying action: {decision.action.value}')
             waveform_report = self._load_waveform_report(iter_dir)
             attempted_architectures = [r.control.architecture for r in records if r.control and r.control.architecture]
-            topology, req, forced_strategy = self._apply_layered_decision(
+            topology, req, forced_strategy, seed_control = self._apply_layered_decision(
                 req=req,
                 topology=topology,
+                strategy=strategy,
                 control=control,
                 evaluation=eval_result,
                 engineer_review=engineer_review,
@@ -441,8 +468,11 @@ class ACSSOrchestrator:
                 waveform_report=waveform_report,
                 intent=intent,
                 attempted_architectures=attempted_architectures,
+                feedback=current_feedback,
+                llm_log=llm_log,
             )
             progress.done('revision', next_topology=topology.topology, action=decision.action.value)
+            dump_json(iter_dir / 'llm_log.json', llm_log.to_json())
 
         final_artifact_files: list[str] = []
         final_validation_mode = 'none'
@@ -491,6 +521,7 @@ class ACSSOrchestrator:
         *,
         req,
         topology,
+        strategy,
         control,
         evaluation,
         engineer_review,
@@ -499,20 +530,55 @@ class ACSSOrchestrator:
         waveform_report: dict | None = None,
         intent: object = None,
         attempted_architectures: list[str] | None = None,
+        feedback: FeedbackControlState | None = None,
+        llm_log: IterationLLMLog | None = None,
     ):
         forced_strategy: dict[str, object] | None = None
+        seed_control = None
         if decision_action == NextAction.RETUNE_PARAMETERS:
             prev_kp = control.kp
             prev_ki = control.ki
-            topology, control = self.tuning_agent.tune(req, topology, control, evaluation=evaluation, waveform_report=waveform_report)
+            topology, control = self.tuning_agent.tune(
+                req,
+                topology,
+                control,
+                evaluation=evaluation,
+                waveform_report=waveform_report,
+                feedback=feedback,
+                llm_log=llm_log,
+            )
             if math.isclose(control.kp, prev_kp) and math.isclose(control.ki, prev_ki):
-                topology, control = self.revising_agent.revise(req, topology, control, evaluation, engineer_review, iteration, waveform_report=waveform_report)
+                topology, control = self.revising_agent.revise(
+                    req,
+                    topology,
+                    control,
+                    evaluation,
+                    engineer_review,
+                    iteration,
+                    waveform_report=waveform_report,
+                    feedback=feedback,
+                    llm_log=llm_log,
+                )
             req.control_design_notes = f"{(req.control_design_notes or '').strip()} Retune parameter loop gains.".strip()
-            return topology, req, forced_strategy
+            forced_strategy = dict(strategy) if isinstance(strategy, dict) else None
+            seed_control = deepcopy(control)
+            return topology, req, forced_strategy, seed_control
         if decision_action == NextAction.PATCH_IMPLEMENTATION:
-            topology, control = self.revising_agent.revise(req, topology, control, evaluation, engineer_review, iteration, waveform_report=waveform_report)
+            topology, control = self.revising_agent.revise(
+                req,
+                topology,
+                control,
+                evaluation,
+                engineer_review,
+                iteration,
+                waveform_report=waveform_report,
+                feedback=feedback,
+                llm_log=llm_log,
+            )
             req.control_design_notes = f"{(req.control_design_notes or '').strip()} Patch implementation and interface mismatches.".strip()
-            return topology, req, forced_strategy
+            forced_strategy = dict(strategy) if isinstance(strategy, dict) else None
+            seed_control = deepcopy(control)
+            return topology, req, forced_strategy, seed_control
         if decision_action == NextAction.SWITCH_CONTROLLER_ARCHITECTURE:
             attempted_clean = [a for a in (attempted_architectures or []) if a]
             avoid_clause = ''
@@ -525,9 +591,17 @@ class ACSSOrchestrator:
                 f"{(req.control_design_notes or '').strip()} "
                 f"Switch controller architecture; prioritize structure change over gain-only tuning.{avoid_clause}"
             ).strip()
-            forced_strategy = self.control_strategy_agent.choose(req, topology, iteration + 1, evaluation, intent=intent)
-            return topology, req, forced_strategy
-        return topology, req, forced_strategy
+            forced_strategy = self.control_strategy_agent.choose(
+                req,
+                topology,
+                iteration + 1,
+                evaluation,
+                intent=intent,
+                feedback=feedback,
+                llm_log=llm_log,
+            )
+            return topology, req, forced_strategy, seed_control
+        return topology, req, forced_strategy, seed_control
 
     def _publish_final_control_code(self, run_dir: Path, record: IterationRecord) -> list[str]:
         if not record.simulation.code_files:

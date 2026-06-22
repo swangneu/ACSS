@@ -10,6 +10,7 @@ class FailureIssueType(str, Enum):
     IMPLEMENTATION_ISSUE = 'implementation_issue'
     ARCHITECTURE_MISMATCH = 'architecture_mismatch'
     PLANT_MODEL_MISMATCH = 'plant_model_mismatch'
+    ARCHITECTURE_LIMIT = 'architecture_limit'
 
 
 class NextAction(str, Enum):
@@ -103,6 +104,22 @@ class ResponseAnalysisReport:
 
 
 @dataclass
+class FeedbackControlState:
+    """PID-inspired summary of one ACSS iteration's feedback state.
+
+    This is a workflow-control object, not an electrical controller. It gives
+    downstream agents three time scales of evidence: current error (P),
+    accumulated recurring bias (I), and trajectory/regression signal (D).
+    """
+    iteration: int
+    proportional: dict[str, Any]
+    integral: dict[str, Any]
+    derivative: dict[str, Any]
+    controller_guidance: dict[str, Any] = field(default_factory=dict)
+    prompt_summary: str = ''
+
+
+@dataclass
 class FailureDiagnosisReport:
     iteration: int
     issue_type: FailureIssueType
@@ -164,4 +181,23 @@ def render_intent_for_prompt(intent: DesignIntent | None) -> str:
         items = ', '.join(f'{k}={v}' for k, v in intent.soft_preferences.items())
         lines.append(f'  soft_preferences: {items}')
     return '\n'.join(lines)
+
+
+def render_feedback_for_prompt(feedback: FeedbackControlState | None) -> str:
+    """Render feedback state as a compact prompt block."""
+    if feedback is None:
+        return ''
+    if feedback.prompt_summary:
+        return feedback.prompt_summary
+    guidance = feedback.controller_guidance or {}
+    return '\n'.join(
+        [
+            'feedback_control_state:',
+            f'  iteration: {feedback.iteration}',
+            f'  proportional: {feedback.proportional}',
+            f'  integral: {feedback.integral}',
+            f'  derivative: {feedback.derivative}',
+            f'  controller_guidance: {guidance}',
+        ]
+    )
 

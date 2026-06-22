@@ -4,6 +4,7 @@ import json
 import unittest
 
 from src.workflow.contracts import (
+    FeedbackControlState,
     FailureDiagnosisReport,
     FailureIssueType,
     GenerationOutput,
@@ -24,6 +25,7 @@ class WorkflowContractsTests(unittest.TestCase):
             to_json_dict(GenerationOutput(0, {}, {}, {}, 'model_payload.json')),
             to_json_dict(SimulationExecutionReport(0, 'synthetic', 'synthetic', [], [], [])),
             to_json_dict(ResponseAnalysisReport(0, False, 0.5, [], {}, [], [], [])),
+            to_json_dict(FeedbackControlState(0, {}, {}, {}, {}, 'feedback')),
             to_json_dict(
                 FailureDiagnosisReport(
                     iteration=0,
@@ -42,4 +44,3 @@ class WorkflowContractsTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

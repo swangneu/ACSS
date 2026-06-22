@@ -4,8 +4,10 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from src.workflow.contracts import (
+    FeedbackControlState,
     FailureDiagnosisReport,
     FailureIssueType,
+    HypothesisState,
     NextAction,
     ResponseAnalysisReport,
 )
@@ -122,6 +124,41 @@ class HypothesisManagerTests(unittest.TestCase):
             sensitivity={'primary_metric': 'overshoot_pct_waveform', 'primary_gain': 'kp', 'responsiveness': 'monotonic_wrong'},
         )
         self.assertEqual(decision.action, NextAction.PATCH_IMPLEMENTATION)
+
+    def test_feedback_bias_forces_architecture_switch_when_already_stagnant(self) -> None:
+        manager = HypothesisManager()
+        manager.client = _llm({})
+        previous_state = HypothesisState(
+            iteration=1,
+            active_hypothesis='parameter_tuning_issue',
+            history=[
+                {'iteration': 0, 'issue_type': 'parameter_tuning_issue', 'action': 'retune_parameters', 'score_delta': 0.0},
+                {'iteration': 1, 'issue_type': 'parameter_tuning_issue', 'action': 'retune_parameters', 'score_delta': 0.0},
+            ],
+        )
+        feedback = FeedbackControlState(
+            iteration=2,
+            proportional={},
+            integral={},
+            derivative={},
+            controller_guidance={'primary_action_bias': 'switch_controller_architecture'},
+        )
+        diagnosis = FailureDiagnosisReport(
+            iteration=2,
+            issue_type=FailureIssueType.PARAMETER_TUNING_ISSUE,
+            confidence=0.7,
+            rationale='',
+            evidence=[],
+        )
+        _, decision = manager.decide(
+            analysis=_analysis(),
+            diagnosis=diagnosis,
+            previous_state=previous_state,
+            sensitivity={'responsiveness': 'insufficient_data'},
+            feedback=feedback,
+        )
+        self.assertEqual(decision.action, NextAction.SWITCH_CONTROLLER_ARCHITECTURE)
+        manager.client.complete_json.assert_not_called()
 
 
 if __name__ == '__main__':

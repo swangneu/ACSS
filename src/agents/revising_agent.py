@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from typing import TYPE_CHECKING
 
 from src.agents._prompt_utils import format_failure_context
 from src.agents.parameter_validator import format_bounds_text, engineering_guidance, validate_and_clamp
@@ -9,6 +10,10 @@ from src.contracts import ControlDesign, EngineerReview, EvaluationResult, Requi
 from src.llm import DeepSeekClient
 from src.rag import LocalKnowledgeBase
 from src.rag.prompting import format_retrieved_context
+from src.workflow.contracts import FeedbackControlState, render_feedback_for_prompt
+
+if TYPE_CHECKING:
+    from src.agents.llm_log import IterationLLMLog
 
 
 class RevisingAgent:
@@ -25,6 +30,8 @@ class RevisingAgent:
         engineer_review: EngineerReview | None,
         iteration: int,
         waveform_report: dict | None = None,
+        feedback: FeedbackControlState | None = None,
+        llm_log: IterationLLMLog | None = None,
     ) -> tuple[TopologyDesign, ControlDesign]:
         if not self.client.enabled:
             raise RuntimeError('DeepSeek API key is required for RevisingAgent in LLM-only mode.')
@@ -48,6 +55,8 @@ class RevisingAgent:
             top_k=2,
         )
         retrieved_text = format_retrieved_context(retrieved)
+        feedback_block = render_feedback_for_prompt(feedback)
+        feedback_section = f'{feedback_block}\n' if feedback_block else ''
 
         system_prompt = (
             'You revise topology/control between failed iterations. '
@@ -71,6 +80,7 @@ class RevisingAgent:
             '- Gains stuck (no improvement): The plant has a fundamental limitation — switch architecture.'
         )
         user_prompt = (
+            f'{feedback_section}'
             f'requirements={asdict(req)}\n'
             f'topology={asdict(topology)}\n'
             f'control={asdict(control)}\n'
@@ -79,10 +89,18 @@ class RevisingAgent:
             f'retrieved_knowledge=\n{retrieved_text}\n'
             f'engineer_review={asdict(engineer_review) if engineer_review else None}\n'
             f'iteration={iteration}\n'
-            'Propose next-iteration revisions that directly address each failure.'
+            'Propose next-iteration revisions that directly address each failure. '
+            'Use feedback_control_state when present: P_current_error is the current symptom, '
+            'I_recurring_failures is accumulated evidence against repeated fixes, and D_trend '
+            'identifies regressions from the last change.'
         )
 
         data = self.client.complete_json(system_prompt, user_prompt, temperature=0.1)
+        if llm_log is not None:
+            llm_log.record('RevisingAgent', system_prompt, user_prompt, retrieved, data)
+        refs = [c.chunk_id for c in retrieved.chunks] if hasattr(retrieved, 'chunks') else []
+        if refs:
+            print(f'[revision] knowledge: {", ".join(refs)}', flush=True)
 
         kp = float(data['kp'])
         ki = float(data['ki'])

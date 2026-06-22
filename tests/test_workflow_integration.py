@@ -67,6 +67,7 @@ class WorkflowIntegrationTests(unittest.TestCase):
 
             iter_dir = layered_run / 'iter_00'
             self.assertTrue((iter_dir / 'analysis_report.json').exists())
+            self.assertTrue((iter_dir / 'feedback_report.json').exists())
             self.assertTrue((iter_dir / 'diagnosis_report.json').exists())
             self.assertTrue((iter_dir / 'decision_report.json').exists())
 
@@ -77,6 +78,10 @@ class WorkflowIntegrationTests(unittest.TestCase):
             self.assertIn('pathology_matches', analysis)
             self.assertIn('waveform_features', analysis)
             self.assertIn('param_trajectory', analysis)
+            feedback = json.loads((iter_dir / 'feedback_report.json').read_text(encoding='utf-8'))
+            self.assertIn('proportional', feedback)
+            self.assertIn('integral', feedback)
+            self.assertIn('derivative', feedback)
 
             # Theme C + D: diagnosis_report carries pathology_label and sensitivity.
             diagnosis = json.loads((iter_dir / 'diagnosis_report.json').read_text(encoding='utf-8'))

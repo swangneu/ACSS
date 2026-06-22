@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from src.workflow.contracts import (
     DesignIntent,
+    FeedbackControlState,
     FailureDiagnosisReport,
     FailureIssueType,
     GenerationOutput,
@@ -14,6 +15,7 @@ from src.workflow.contracts import (
 )
 from src.workflow.controller_generator import ControllerGenerator
 from src.workflow.failure_diagnoser import FailureDiagnoser
+from src.workflow.feedback_controller import build_feedback_control_state
 from src.workflow.hypothesis_manager import HypothesisManager
 from src.workflow.response_analyzer import ResponseAnalyzer
 from src.workflow.simulation_executor import SimulationExecutor
@@ -23,6 +25,7 @@ __all__ = [
     'ControllerGenerator',
     'DesignIntent',
     'DesignSpecParser',
+    'FeedbackControlState',
     'FailureDiagnoser',
     'FailureDiagnosisReport',
     'FailureIssueType',
@@ -36,5 +39,6 @@ __all__ = [
     'ResponseAnalyzer',
     'SimulationExecutionReport',
     'SimulationExecutor',
+    'build_feedback_control_state',
 ]
 

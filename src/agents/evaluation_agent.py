@@ -46,14 +46,19 @@ class EvaluationAgent:
             report['metric_checks'].append(
                 {'id': 'overshoot_pct', 'passed': True, 'actual': m['overshoot_pct'], 'expected_max': req.overshoot_pct_max}
             )
-        if m['settling_time_ms'] > req.settling_time_ms_max:
-            violations.append(f"settling_time_ms {m['settling_time_ms']} > {req.settling_time_ms_max}")
-            report['metric_checks'].append(
-                {'id': 'settling_time_ms', 'passed': False, 'actual': m['settling_time_ms'], 'expected_max': req.settling_time_ms_max}
-            )
+        if req.settling_time_ms_max > 0:
+            if m['settling_time_ms'] > req.settling_time_ms_max:
+                violations.append(f"settling_time_ms {m['settling_time_ms']} > {req.settling_time_ms_max}")
+                report['metric_checks'].append(
+                    {'id': 'settling_time_ms', 'passed': False, 'actual': m['settling_time_ms'], 'expected_max': req.settling_time_ms_max}
+                )
+            else:
+                report['metric_checks'].append(
+                    {'id': 'settling_time_ms', 'passed': True, 'actual': m['settling_time_ms'], 'expected_max': req.settling_time_ms_max}
+                )
         else:
             report['metric_checks'].append(
-                {'id': 'settling_time_ms', 'passed': True, 'actual': m['settling_time_ms'], 'expected_max': req.settling_time_ms_max}
+                {'id': 'settling_time_ms', 'passed': True, 'actual': m['settling_time_ms'], 'expected_max': 0, 'skipped': True}
             )
         if m['ripple_v_pp'] > req.ripple_v_pp_max:
             violations.append(f"ripple_v_pp {m['ripple_v_pp']} > {req.ripple_v_pp_max}")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from typing import TYPE_CHECKING
 
 from src.agents._topology_meta import (
     FAMILY_ARCHITECTURES,
@@ -14,7 +15,10 @@ from src.agents.parameter_validator import engineering_guidance, format_bounds_t
 from src.contracts import ControlDesign, RequirementSpec, TopologyDesign
 from src.llm import DeepSeekClient
 from src.rag import LocalKnowledgeBase, extract_references, format_retrieved_context
-from src.workflow.contracts import DesignIntent, render_intent_for_prompt
+from src.workflow.contracts import FeedbackControlState, DesignIntent, render_feedback_for_prompt, render_intent_for_prompt
+
+if TYPE_CHECKING:
+    from src.agents.llm_log import IterationLLMLog
 
 # All architectures recognised by the system (across all topology families).
 _ALL_ARCHITECTURES: frozenset[str] = frozenset(
@@ -36,13 +40,24 @@ class ControlAgent:
         iteration: int = 0,
         strategy: dict[str, object] | None = None,
         intent: DesignIntent | None = None,
+        feedback: FeedbackControlState | None = None,
+        llm_log: IterationLLMLog | None = None,
     ) -> ControlDesign:
         if strategy is None:
             strategy = {}
         if not self.client.enabled:
             raise RuntimeError('DeepSeek API key is required for ControlAgent in LLM-only mode.')
         context = self._retrieve_context(req, topology, strategy)
-        llm_result = self._design_with_llm(req, topology, iteration, strategy, context, intent)
+        llm_result = self._design_with_llm(
+            req,
+            topology,
+            iteration,
+            strategy,
+            context,
+            intent,
+            feedback,
+            llm_log=llm_log,
+        )
         return self._build_design(req, llm_result, iteration, context, topology=topology)
 
     def _design_with_llm(
@@ -53,6 +68,8 @@ class ControlAgent:
         strategy: dict[str, object],
         retrieved_context: object,
         intent: DesignIntent | None,
+        feedback: FeedbackControlState | None,
+        llm_log: IterationLLMLog | None = None,
     ) -> dict[str, object]:
         bounds_text = format_bounds_text(topology.topology)
         guidance = engineering_guidance(
@@ -82,8 +99,11 @@ class ControlAgent:
         )
         intent_block = render_intent_for_prompt(intent)
         intent_section = f"{intent_block}\n" if intent_block else ''
+        feedback_block = render_feedback_for_prompt(feedback)
+        feedback_section = f"{feedback_block}\n" if feedback_block else ''
         user_prompt = (
             f"{intent_section}"
+            f"{feedback_section}"
             f"requirements={asdict(req)}\n"
             f"topology={asdict(topology)}\n"
             f"topology_family={fam}\n"
@@ -93,9 +113,17 @@ class ControlAgent:
             f"retrieved_knowledge=\n{format_retrieved_context(retrieved_context)}\n"
             "Keep controller type aligned with selected_strategy. "
             "When user_intent is present, choose initial gains that lean toward the highest-priority "
-            "objective (e.g. tighter bandwidth for fast_load_step, lower bandwidth for stability_margin_first)."
+            "objective (e.g. tighter bandwidth for fast_load_step, lower bandwidth for stability_margin_first). "
+            "When feedback_control_state is present, use P_current_error for the immediate target, "
+            "I_recurring_failures to avoid repeating failed gain directions, and D_trend to avoid "
+            "large moves after regressions."
         )
         data = self.client.complete_json(system_prompt, user_prompt, temperature=0.1)
+        if llm_log is not None:
+            llm_log.record('ControlAgent', system_prompt, user_prompt, retrieved_context, data)
+        refs = [c.chunk_id for c in retrieved_context.chunks] if hasattr(retrieved_context, 'chunks') else []
+        if refs:
+            print(f'[control] knowledge: {", ".join(refs)}', flush=True)
         required = {'controller', 'architecture', 'kp', 'ki', 'sample_time_s'}
         if not required.issubset(data.keys()):
             raise ValueError('LLM control response missing required fields')

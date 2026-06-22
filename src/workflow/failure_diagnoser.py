@@ -7,6 +7,7 @@ from typing import Any
 from src.llm import DeepSeekClient
 from src.workflow.contracts import (
     DesignIntent,
+    FeedbackControlState,
     FailureDiagnosisReport,
     FailureIssueType,
     ResponseAnalysisReport,
@@ -71,6 +72,7 @@ class FailureDiagnoser:
         intent: DesignIntent | None = None,
         pathology_label: dict[str, Any] | None = None,
         sensitivity: dict[str, Any] | None = None,
+        feedback: FeedbackControlState | None = None,
     ) -> FailureDiagnosisReport:
         if not self.client.enabled:
             raise RuntimeError('DeepSeek API key is required for FailureDiagnoser in LLM-only mode.')
@@ -80,9 +82,13 @@ class FailureDiagnoser:
             'history': [_summarize_analysis(h) for h in history[-3:]] if history else [],
             'pathology_label': pathology_label or {'pathology': 'none', 'source': 'none'},
             'sensitivity': sensitivity or {'responsiveness': 'unknown'},
+            'feedback_control_state': feedback.prompt_summary if feedback is not None else '',
         }
         data = self.client.complete_json(
-            _SYSTEM_PROMPT,
+            _SYSTEM_PROMPT
+            + '\nUse feedback_control_state when present: P identifies current symptoms, '
+            'I identifies repeated bias or accumulated failure, and D identifies whether '
+            'the last move helped or regressed.',
             json.dumps(payload, indent=2, default=str),
             temperature=0.0,
         )

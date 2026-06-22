@@ -212,14 +212,13 @@ Every requirements file must include a non-empty `design_prompt`.
   "pout_w": 500.0,
   "fsw_hz": 10000.0,
   "ripple_v_pp_max": 0.05,
-  "settling_time_ms_max": 3.0,
   "overshoot_pct_max": 5.0,
   "efficiency_min_pct": 92.0,
   "max_iterations": 6
 }
 ```
 
-Optional fields: `grid_connected`, `weak_grid_mode`, `load_step_pct`, `inrush_limit_a`, `control_design_notes`, `preferred_topology`, `output_signal_mode`.
+Optional fields: `settling_time_ms_max` (default 0 = not enforced; settling time is still computed and logged but not used as a pass/fail criterion), `grid_connected`, `weak_grid_mode`, `load_step_pct`, `inrush_limit_a`, `control_design_notes`, `preferred_topology`, `output_signal_mode`.
 
 ---
 
@@ -240,8 +239,10 @@ runs/<timestamp>_<name>/
 │   ├── waveforms.svg             waveform preview plot
 │   ├── waveforms_3ph.json/.svg   three-phase voltage/current (inverter)
 │   ├── evaluation_report.json    metric checks + waveform harness results
+│   ├── llm_log.json              full LLM prompts + retrieved knowledge per agent call
 │   ├── topology_template_info.json  parsed template metadata
 │   ├── analysis_report.json      (layered) signal extraction
+│   ├── feedback_report.json      (layered) P/I/D harness feedback state
 │   ├── diagnosis_report.json     (layered) root-cause classification
 │   ├── decision_report.json      (layered) next-action decision
 │   └── *.review.json             (--human-review) approval checkpoints

@@ -15,9 +15,9 @@ class RequirementSpec:
     pout_w: float
     fsw_hz: float
     ripple_v_pp_max: float
-    settling_time_ms_max: float
     overshoot_pct_max: float
     efficiency_min_pct: float
+    settling_time_ms_max: float = 0.0
     grid_connected: bool | None = None
     weak_grid_mode: bool | None = None
     load_step_pct: float | None = None

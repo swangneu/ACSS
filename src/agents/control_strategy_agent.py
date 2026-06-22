@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from typing import TYPE_CHECKING
 
 from src.agents._topology_meta import (
     FAMILY_ARCHITECTURES,
@@ -13,7 +14,10 @@ from src.agents._topology_meta import (
 from src.contracts import EvaluationResult, RequirementSpec, TopologyDesign
 from src.llm import DeepSeekClient
 from src.rag import LocalKnowledgeBase, extract_references, format_retrieved_context
-from src.workflow.contracts import DesignIntent, render_intent_for_prompt
+from src.workflow.contracts import FeedbackControlState, DesignIntent, render_feedback_for_prompt, render_intent_for_prompt
+
+if TYPE_CHECKING:
+    from src.agents.llm_log import IterationLLMLog
 
 
 class ControlStrategyAgent:
@@ -28,11 +32,22 @@ class ControlStrategyAgent:
         iteration: int,
         previous_evaluation: EvaluationResult | None = None,
         intent: DesignIntent | None = None,
+        feedback: FeedbackControlState | None = None,
+        llm_log: IterationLLMLog | None = None,
     ) -> dict[str, object]:
         if not self.client.enabled:
             raise RuntimeError('DeepSeek API key is required for ControlStrategyAgent in LLM-only mode.')
         context = self._retrieve_context(req, topology, previous_evaluation)
-        decision = self._choose_with_llm(req, topology, iteration, previous_evaluation, context, intent)
+        decision = self._choose_with_llm(
+            req,
+            topology,
+            iteration,
+            previous_evaluation,
+            context,
+            intent,
+            feedback,
+            llm_log=llm_log,
+        )
         return self._attach_context(decision, context)
 
     def _choose_with_llm(
@@ -43,6 +58,8 @@ class ControlStrategyAgent:
         previous_evaluation: EvaluationResult | None,
         retrieved_context: object,
         intent: DesignIntent | None,
+        feedback: FeedbackControlState | None,
+        llm_log: IterationLLMLog | None = None,
     ) -> dict[str, object]:
         fam = power_stage_family(topology.topology)
         allowed_archs = FAMILY_ARCHITECTURES.get(fam, ['pi'])
@@ -65,8 +82,11 @@ class ControlStrategyAgent:
         )
         intent_block = render_intent_for_prompt(intent)
         intent_section = f"{intent_block}\n" if intent_block else ''
+        feedback_block = render_feedback_for_prompt(feedback)
+        feedback_section = f"{feedback_block}\n" if feedback_block else ''
         user_prompt = (
             f"{intent_section}"
+            f"{feedback_section}"
             f"requirements={asdict(req)}\n"
             f"topology={asdict(topology)}\n"
             f"topology_family={fam}\n"
@@ -75,9 +95,16 @@ class ControlStrategyAgent:
             f"design_prompt={req.design_prompt}\n"
             f"retrieved_knowledge=\n{format_retrieved_context(retrieved_context)}\n"
             "Choose robust strategy for converter barriers, load step, grid connection, and inrush. "
-            "When user_intent is present, prioritize architectures that serve the listed priorities and scenarios."
+            "When user_intent is present, prioritize architectures that serve the listed priorities and scenarios. "
+            "When feedback_control_state is present, obey its guardrails and avoid repeating architectures "
+            "that are accumulating recurring failures unless there is clear trend improvement."
         )
         data = self.client.complete_json(system_prompt, user_prompt, temperature=0.1)
+        if llm_log is not None:
+            llm_log.record('ControlStrategyAgent', system_prompt, user_prompt, retrieved_context, data)
+        refs = [c.chunk_id for c in retrieved_context.chunks] if hasattr(retrieved_context, 'chunks') else []
+        if refs:
+            print(f'[strategy] knowledge: {", ".join(refs)}', flush=True)
         required = {'controller', 'architecture', 'current_loop_enabled', 'inrush_control', 'secondary_controller'}
         if not required.issubset(data.keys()):
             raise ValueError('LLM strategy response missing required fields')

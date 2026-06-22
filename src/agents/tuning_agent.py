@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from typing import TYPE_CHECKING
 
 from src.agents._prompt_utils import format_failure_context
 from src.agents.parameter_validator import format_bounds_text, engineering_guidance, validate_and_clamp
@@ -9,6 +10,10 @@ from src.contracts import ControlDesign, EvaluationResult, RequirementSpec, Topo
 from src.llm import DeepSeekClient
 from src.rag import LocalKnowledgeBase
 from src.rag.prompting import format_retrieved_context
+from src.workflow.contracts import FeedbackControlState, render_feedback_for_prompt
+
+if TYPE_CHECKING:
+    from src.agents.llm_log import IterationLLMLog
 
 
 class TuningAgent:
@@ -23,6 +28,8 @@ class TuningAgent:
         control: ControlDesign,
         evaluation: EvaluationResult | None = None,
         waveform_report: dict | None = None,
+        feedback: FeedbackControlState | None = None,
+        llm_log: IterationLLMLog | None = None,
     ) -> tuple[TopologyDesign, ControlDesign]:
         if not self.client.enabled:
             raise RuntimeError('DeepSeek API key is required for TuningAgent in LLM-only mode.')
@@ -68,18 +75,29 @@ class TuningAgent:
             top_k=2,
         )
         retrieved_text = format_retrieved_context(retrieved)
+        feedback_block = render_feedback_for_prompt(feedback)
+        feedback_section = f'{feedback_block}\n' if feedback_block else ''
 
         user_prompt = (
+            f'{feedback_section}'
             f'requirements={asdict(req)}\n'
             f'topology={asdict(topology)}\n'
             f'control={asdict(control)}\n'
             f'FAILURES:\n{failure_context}\n'
             f'retrieved_knowledge=\n{retrieved_text}\n'
             'Provide specific parameter adjustments that address each failure. '
-            'Explain your reasoning in the rationale field.'
+            'Use feedback_control_state when present: tune against P_current_error, '
+            'respect I_recurring_failures as evidence of accumulated bias, and avoid '
+            'gain directions that D_trend says are regressing. Explain your reasoning '
+            'in the rationale field.'
         )
 
         data = self.client.complete_json(system_prompt, user_prompt, temperature=0.1)
+        if llm_log is not None:
+            llm_log.record('TuningAgent', system_prompt, user_prompt, retrieved, data)
+        refs = [c.chunk_id for c in retrieved.chunks] if hasattr(retrieved, 'chunks') else []
+        if refs:
+            print(f'[tuning] knowledge: {", ".join(refs)}', flush=True)
 
         kp = float(data['kp'])
         ki = float(data['ki'])

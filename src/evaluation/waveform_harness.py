@@ -82,7 +82,7 @@ def evaluate_waveform_files(req: RequirementSpec, waveform_files: list[str]) -> 
 
     abs_target = max(abs(target), 1e-9)
     _add_check(report, 'sample_count', samples >= 50, samples, '>=', 50, None)
-    min_duration_ms = max(5.0, min(15.0, req.settling_time_ms_max * 1.2))
+    min_duration_ms = max(5.0, min(15.0, req.settling_time_ms_max * 1.2)) if req.settling_time_ms_max > 0 else 5.0
     _add_check(report, 'waveform_duration_ms', duration_ms >= min_duration_ms, duration_ms, '>=', min_duration_ms, 'ms')
     _add_check(report, 'output_floor_tail', ts.abs_mean >= abs_target * 0.1, ts.abs_mean, '>=', abs_target * 0.1, 'V')
     _add_check(
@@ -103,15 +103,16 @@ def evaluate_waveform_files(req: RequirementSpec, waveform_files: list[str]) -> 
         req.overshoot_pct_max,
         '%',
     )
-    _add_check(
-        report,
-        'settling_time_ms_waveform',
-        settling_time_ms_val <= req.settling_time_ms_max,
-        settling_time_ms_val,
-        '<=',
-        req.settling_time_ms_max,
-        'ms',
-    )
+    if req.settling_time_ms_max > 0:
+        _add_check(
+            report,
+            'settling_time_ms_waveform',
+            settling_time_ms_val <= req.settling_time_ms_max,
+            settling_time_ms_val,
+            '<=',
+            req.settling_time_ms_max,
+            'ms',
+        )
     _add_check(
         report,
         'ripple_v_pp_tail',
